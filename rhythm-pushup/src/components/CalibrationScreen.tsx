@@ -44,11 +44,8 @@ const CalibrationScreen = ({ onComplete }: CalibrationScreenProps) => {
 
       const roundedAngle = Math.round(angle);
 
-      // フレームカウントを制限して状態更新を減らす（3フレームに1回）
-      frameCountRef.current++;
-      if (frameCountRef.current % 3 === 0) {
-        setCurrentAngle(roundedAngle);
-      }
+      // 毎フレーム角度を更新（スムーズな表示のため）
+      setCurrentAngle(roundedAngle);
 
       // 記録処理
       if (step === 'upper' && roundedAngle >= UPPER_ANGLE_MIN) {
@@ -63,10 +60,7 @@ const CalibrationScreen = ({ onComplete }: CalibrationScreenProps) => {
           angleBufferRef.current = [];
           setRecordingProgress(0);
         } else {
-          // 進捗バーの更新も減らす（3フレームに1回）
-          if (frameCountRef.current % 3 === 0) {
-            setRecordingProgress((angleBufferRef.current.length / 30) * 100);
-          }
+          setRecordingProgress((angleBufferRef.current.length / 30) * 100);
         }
       } else if (step === 'lower' && roundedAngle > 0 && roundedAngle <= LOWER_ANGLE_MAX) {
         angleBufferRef.current.push(roundedAngle);
@@ -78,10 +72,7 @@ const CalibrationScreen = ({ onComplete }: CalibrationScreenProps) => {
           setLowerAngle(Math.round(average));
           setStep('complete');
         } else {
-          // 進捗バーの更新も減らす（3フレームに1回）
-          if (frameCountRef.current % 3 === 0) {
-            setRecordingProgress((angleBufferRef.current.length / 30) * 100);
-          }
+          setRecordingProgress((angleBufferRef.current.length / 30) * 100);
         }
       }
     }

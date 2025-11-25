@@ -35,8 +35,8 @@ const PoseDetection = ({
   onPoseDetected,
   onPushUpCount,
   calibrationData,
-  width = 160,
-  height = 120
+  width = 320,
+  height = 240
 }: PoseDetectionProps) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -48,10 +48,22 @@ const PoseDetection = ({
 
   const stateRef = useRef<'up' | 'down' | 'unknown'>('unknown');
   const countRef = useRef<number>(0);
+  const onPoseDetectedRef = useRef(onPoseDetected);
+  const onPushUpCountRef = useRef(onPushUpCount);
 
   // しきい値（キャリブレーションデータまたはデフォルト値）
   const upperThreshold = calibrationData?.upperThreshold ?? 160;
   const lowerThreshold = calibrationData?.lowerThreshold ?? 90;
+  const upperThresholdRef = useRef(upperThreshold);
+  const lowerThresholdRef = useRef(lowerThreshold);
+
+  // refを常に最新の値に更新
+  useEffect(() => {
+    onPoseDetectedRef.current = onPoseDetected;
+    onPushUpCountRef.current = onPushUpCount;
+    upperThresholdRef.current = upperThreshold;
+    lowerThresholdRef.current = lowerThreshold;
+  });
 
   useEffect(() => {
     if (!videoRef.current || !canvasRef.current) return;
@@ -63,8 +75,8 @@ const PoseDetection = ({
     });
 
     pose.setOptions({
-      modelComplexity: 0, // 0 = 軽量モデル（1から0に変更）
-      smoothLandmarks: true,
+      modelComplexity: 0, // 0 = 軽量モデル（高速処理優先）
+      smoothLandmarks: false, // ランドマーク平滑化無効（レイテンシ削減）
       enableSegmentation: false,
       smoothSegmentation: false,
       minDetectionConfidence: 0.5,
@@ -77,20 +89,19 @@ const PoseDetection = ({
       const canvasCtx = canvasRef.current.getContext('2d');
       if (!canvasCtx) return;
 
-      // カメラ映像を描画
+      // Canvasをクリア（透明に）
       canvasCtx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
-      canvasCtx.drawImage(results.image, 0, 0, canvasRef.current.width, canvasRef.current.height);
 
-      // 姿勢推定の骨格を描画
+      // 姿勢推定の骨格のみを描画（カメラ映像は描画しない）
       if (results.poseLandmarks) {
         drawConnectors(canvasCtx, results.poseLandmarks, POSE_CONNECTIONS, {
           color: '#00FF00',
-          lineWidth: 4,
+          lineWidth: 3,
         });
         drawLandmarks(canvasCtx, results.poseLandmarks, {
           color: '#FF0000',
-          lineWidth: 2,
-          radius: 5,
+          lineWidth: 1,
+          radius: 3,
         });
 
         // 腕立て伏せ検出ロジック
@@ -102,24 +113,25 @@ const PoseDetection = ({
         const rightWrist = landmarks[16]; // RIGHT_WRIST
 
         const angle = calculateAngle(rightShoulder, rightElbow, rightWrist);
-        setCurrentAngle(Math.round(angle));
+        const roundedAngle = Math.round(angle);
+        setCurrentAngle(roundedAngle);
 
-        // 腕立て伏せの状態判定（キャリブレーションデータを使用）
-        if (angle < lowerThreshold && stateRef.current !== 'down') {
+        // 腕立て伏せの状態判定（refから最新の値を取得）
+        if (roundedAngle < lowerThresholdRef.current && stateRef.current !== 'down') {
           // 下がった状態
           stateRef.current = 'down';
           setCurrentState('down');
-        } else if (angle > upperThreshold && stateRef.current === 'down') {
+        } else if (roundedAngle > upperThresholdRef.current && stateRef.current === 'down') {
           // 上がった状態（カウントアップ）
           stateRef.current = 'up';
           setCurrentState('up');
           countRef.current += 1;
           setPushUpCount(countRef.current);
 
-          if (onPushUpCount) {
-            onPushUpCount(countRef.current);
+          if (onPushUpCountRef.current) {
+            onPushUpCountRef.current(countRef.current);
           }
-        } else if (angle > upperThreshold && stateRef.current === 'unknown') {
+        } else if (roundedAngle > upperThresholdRef.current && stateRef.current === 'unknown') {
           // 初期状態を「上」に設定
           stateRef.current = 'up';
           setCurrentState('up');
@@ -127,8 +139,8 @@ const PoseDetection = ({
       }
 
       // コールバック実行
-      if (onPoseDetected) {
-        onPoseDetected(results);
+      if (onPoseDetectedRef.current) {
+        onPoseDetectedRef.current(results);
       }
     });
 
@@ -138,8 +150,8 @@ const PoseDetection = ({
           await pose.send({ image: videoRef.current });
         }
       },
-      width,
-      height,
+      width: 640,
+      height: 480,
     });
 
     camera.start();
@@ -148,12 +160,12 @@ const PoseDetection = ({
       camera.stop();
       pose.close();
     };
-  }, [onPoseDetected]);
+  }, []);
 
   return (
     <div className="pose-detection-container">
-      <video ref={videoRef} className="pose-video" />
-      <canvas ref={canvasRef} className="pose-canvas" width={width} height={height} />
+      <video ref={videoRef} className="pose-video" width={640} height={480} autoPlay playsInline />
+      <canvas ref={canvasRef} className="pose-canvas" width={640} height={480} />
       <div className="pose-debug-info">
         <div>カウント: {pushUpCount}</div>
         <div>状態: {currentState === 'up' ? '上' : currentState === 'down' ? '下' : '不明'}</div>
