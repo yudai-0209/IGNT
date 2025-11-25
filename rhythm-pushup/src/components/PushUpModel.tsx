@@ -5,7 +5,7 @@ import { useGLTF, useAnimations, Environment } from '@react-three/drei';
 import type { Group } from 'three';
 import * as THREE from 'three';
 
-const Model = ({ url, onLoad }: { url: string; onLoad?: () => void }) => {
+const Model = ({ url, currentFrame, onLoad }: { url: string; currentFrame: number; onLoad?: () => void }) => {
   const modelRef = React.useRef<Group>(null!);
   const [isModelReady, setIsModelReady] = React.useState(false);
   const { scene, animations } = useGLTF(url, true); // useDraco = true
@@ -59,13 +59,15 @@ const Model = ({ url, onLoad }: { url: string; onLoad?: () => void }) => {
       });
     }
 
-    // アニメーションを開始
+    // アニメーションを準備（自動再生はしない）
     if (names && names.length > 0) {
       const action = actions[names[0]];
       if (action) {
-        action.setLoop(THREE.LoopRepeat, Infinity);
+        action.setLoop(THREE.LoopOnce, 1);
+        action.clampWhenFinished = true;
+        action.paused = true; // 一時停止状態で開始
         action.play();
-        console.log('Animation started:', names[0]);
+        console.log('Animation prepared:', names[0]);
       }
     }
 
@@ -74,6 +76,22 @@ const Model = ({ url, onLoad }: { url: string; onLoad?: () => void }) => {
       onLoad();
     }
   }, [onLoad, scene, actions, names]);
+
+  // フレーム番号に基づいてアニメーション時間を制御
+  React.useEffect(() => {
+    if (names && names.length > 0) {
+      const action = actions[names[0]];
+      if (action) {
+        const clip = action.getClip();
+        const totalFrames = 50; // 総フレーム数
+        const timePerFrame = clip.duration / totalFrames;
+        const targetTime = currentFrame * timePerFrame;
+
+        action.time = targetTime;
+        action.paused = true; // 一時停止状態を維持
+      }
+    }
+  }, [currentFrame, actions, names]);
 
   return (
     <primitive
@@ -89,16 +107,17 @@ const Model = ({ url, onLoad }: { url: string; onLoad?: () => void }) => {
 
 interface PushUpModelProps {
   modelPath: string;
+  currentFrame: number;
   onLoad?: () => void;
 }
 
-const PushUpModel = ({ modelPath, onLoad }: PushUpModelProps) => {
+const PushUpModel = ({ modelPath, currentFrame, onLoad }: PushUpModelProps) => {
   return (
     <Canvas camera={{ position: [10, 0, 10], fov: 90 }}>
       <Environment preset="sunset" />
       <ambientLight intensity={0.5} />
       <directionalLight position={[3, 3, 5]} intensity={1.5} />
-      <Model url={modelPath} onLoad={onLoad} />
+      <Model url={modelPath} currentFrame={currentFrame} onLoad={onLoad} />
     </Canvas>
   );
 };

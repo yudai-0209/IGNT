@@ -9,6 +9,7 @@ import './PoseDetection.css';
 interface PoseDetectionProps {
   onPoseDetected?: (results: Results) => void;
   onPushUpCount?: (count: number) => void;
+  onFrameUpdate?: (frame: number) => void;
   calibrationData?: CalibrationData | null;
   width?: number;
   height?: number;
@@ -31,9 +32,28 @@ function calculateAngle(
   return angle;
 }
 
+// 角度から3Dモデルのフレーム番号を計算（25-50の範囲）
+function angleToFrame(
+  currentAngle: number,
+  upperAngle: number,
+  lowerAngle: number
+): number {
+  // 角度を0-1の範囲に正規化
+  const normalizedAngle = (currentAngle - lowerAngle) / (upperAngle - lowerAngle);
+
+  // 0-1の値を25-50のフレーム範囲にマッピング
+  // 上限角度(大きい角度) → フレーム25(高い位置)
+  // 下限角度(小さい角度) → フレーム50(低い位置)
+  const frame = 50 - (normalizedAngle * 25);
+
+  // フレーム範囲を25-50にクランプ
+  return Math.max(25, Math.min(50, Math.round(frame)));
+}
+
 const PoseDetection = ({
   onPoseDetected,
   onPushUpCount,
+  onFrameUpdate,
   calibrationData,
   width = 320,
   height = 240
@@ -51,11 +71,11 @@ const PoseDetection = ({
   const countRef = useRef<number>(0);
   const onPoseDetectedRef = useRef(onPoseDetected);
   const onPushUpCountRef = useRef(onPushUpCount);
-  const angleHistoryRef = useRef<number[]>([]); // 過去3フレームの角度を保持
+  const onFrameUpdateRef = useRef(onFrameUpdate);
 
-  // しきい値（キャリブレーションデータまたはデフォルト値）
-  const upperThreshold = calibrationData?.upperThreshold ?? 160;
-  const lowerThreshold = calibrationData?.lowerThreshold ?? 90;
+  // しきい値（固定値）
+  const upperThreshold = 180; // 上限角度
+  const lowerThreshold = 60;  // 下限角度
   const upperThresholdRef = useRef(upperThreshold);
   const lowerThresholdRef = useRef(lowerThreshold);
 
@@ -63,6 +83,7 @@ const PoseDetection = ({
   useEffect(() => {
     onPoseDetectedRef.current = onPoseDetected;
     onPushUpCountRef.current = onPushUpCount;
+    onFrameUpdateRef.current = onFrameUpdate;
     upperThresholdRef.current = upperThreshold;
     lowerThresholdRef.current = lowerThreshold;
   });
@@ -132,29 +153,26 @@ const PoseDetection = ({
 
           // 右腕の角度を計算（肩-肘-手首）
           const angle = calculateAngle(rightShoulder, rightElbow, rightWrist);
-          const rawAngle = Math.round(angle);
+          const currentAngle = Math.round(angle);
 
-          // 角度履歴に追加
-          angleHistoryRef.current.push(rawAngle);
+          setCurrentAngle(currentAngle);
 
-          // 最新の3フレームのみ保持
-          if (angleHistoryRef.current.length > 3) {
-            angleHistoryRef.current.shift();
+          // 角度から3Dモデルのフレーム番号を計算して通知（リアルタイム）
+          if (onFrameUpdateRef.current) {
+            const frame = angleToFrame(
+              currentAngle,
+              upperThresholdRef.current,
+              lowerThresholdRef.current
+            );
+            onFrameUpdateRef.current(frame);
           }
 
-          // 3フレームの平均を計算
-          const averageAngle = Math.round(
-            angleHistoryRef.current.reduce((sum, a) => sum + a, 0) / angleHistoryRef.current.length
-          );
-
-          setCurrentAngle(averageAngle);
-
-          // 腕立て伏せの状態判定（平均角度を使用）
-          if (averageAngle < lowerThresholdRef.current && stateRef.current !== 'down') {
+          // 腕立て伏せの状態判定（現在の角度を使用）
+          if (currentAngle < lowerThresholdRef.current && stateRef.current !== 'down') {
             // 下がった状態
             stateRef.current = 'down';
             setCurrentState('down');
-          } else if (averageAngle > upperThresholdRef.current && stateRef.current === 'down') {
+          } else if (currentAngle > upperThresholdRef.current && stateRef.current === 'down') {
             // 上がった状態（カウントアップ）
             stateRef.current = 'up';
             setCurrentState('up');
@@ -164,7 +182,7 @@ const PoseDetection = ({
             if (onPushUpCountRef.current) {
               onPushUpCountRef.current(countRef.current);
             }
-          } else if (averageAngle > upperThresholdRef.current && stateRef.current === 'unknown') {
+          } else if (currentAngle > upperThresholdRef.current && stateRef.current === 'unknown') {
             // 初期状態を「上」に設定
             stateRef.current = 'up';
             setCurrentState('up');
@@ -173,7 +191,6 @@ const PoseDetection = ({
           // ランドマークが見えない場合
           setIsPositionValid(false);
           setCurrentAngle(0);
-          angleHistoryRef.current = []; // 履歴をクリア
         }
       }
 
