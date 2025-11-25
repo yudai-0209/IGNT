@@ -1,0 +1,191 @@
+.calibration-screen {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 844px;
+  height: 390px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  overflow: hidden;
+}
+
+.calibration-background {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  filter: brightness(0.6);
+}
+
+.calibration-main {
+  position: relative;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  padding: 20px;
+}
+
+.calibration-camera {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  z-index: 100;
+}
+
+.calibration-camera .pose-detection-container {
+  position: relative !important;
+  bottom: auto !important;
+  right: auto !important;
+}
+
+.calibration-content {
+  text-align: center;
+  color: white;
+  background-color: rgba(0, 0, 0, 0.8);
+  padding: 40px 60px;
+  border-radius: 16px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
+  max-width: 600px;
+}
+
+.calibration-content h1 {
+  font-size: 2.5rem;
+  margin-bottom: 20px;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+.calibration-content h2 {
+  font-size: 1.5rem;
+  margin-bottom: 10px;
+  color: #00ff00;
+}
+
+.calibration-content h3 {
+  font-size: 1.8rem;
+  margin-bottom: 15px;
+}
+
+.calibration-content p {
+  font-size: 1.1rem;
+  margin: 5px 0;
+  line-height: 1.6;
+}
+
+.calibration-buttons {
+  display: flex;
+  gap: 20px;
+  justify-content: center;
+  margin-top: 30px;
+}
+
+.btn-primary {
+  background-color: #00ff00;
+  color: #000;
+  border: none;
+  padding: 15px 40px;
+  font-size: 1.3rem;
+  font-weight: bold;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.btn-primary:hover {
+  background-color: #00cc00;
+  transform: scale(1.05);
+}
+
+.btn-secondary {
+  background-color: #666;
+  color: #fff;
+  border: none;
+  padding: 15px 40px;
+  font-size: 1.3rem;
+  font-weight: bold;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.btn-secondary:hover {
+  background-color: #888;
+}
+
+.angle-display {
+  margin: 30px 0;
+}
+
+.angle-value {
+  font-size: 4rem;
+  font-weight: bold;
+  color: #00ff00;
+  text-shadow: 0 0 20px rgba(0, 255, 0, 0.8);
+  margin-bottom: 15px;
+}
+
+.angle-warning {
+  font-size: 1.5rem;
+  color: #ff3333;
+  font-weight: bold;
+  animation: pulse 1s infinite;
+}
+
+.angle-success {
+  font-size: 1.5rem;
+  color: #00ff00;
+  font-weight: bold;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.progress-bar {
+  width: 100%;
+  height: 20px;
+  background-color: rgba(255, 255, 255, 0.2);
+  border-radius: 10px;
+  overflow: hidden;
+  margin-top: 20px;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #00ff00, #00cc00);
+  transition: width 0.1s linear;
+  box-shadow: 0 0 10px rgba(0, 255, 0, 0.8);
+}
+
+.calibration-results {
+  margin: 30px 0;
+  text-align: left;
+}
+
+.result-item {
+  display: flex;
+  justify-content: space-between;
+  padding: 15px;
+  margin: 10px 0;
+  background-color: rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  font-size: 1.3rem;
+}
+
+.result-item span:first-child {
+  color: #aaa;
+}
+
+.result-item span:last-child {
+  color: #00ff00;
+  font-weight: bold;
+}

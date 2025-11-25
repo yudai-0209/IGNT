@@ -1,0 +1,34 @@
+.pose-detection-container {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  width: 160px;
+  z-index: 100;
+  border: 2px solid #ffffff;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+  background-color: rgba(0, 0, 0, 0.8);
+}
+
+.pose-video {
+  display: none;
+}
+
+.pose-canvas {
+  width: 100%;
+  height: 120px;
+  display: block;
+}
+
+.pose-debug-info {
+  padding: 8px;
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: bold;
+  background-color: rgba(0, 0, 0, 0.7);
+}
+
+.pose-debug-info div {
+  margin: 2px 0;
+}

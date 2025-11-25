@@ -1,0 +1,36 @@
+.game-screen {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 844px;
+  height: 390px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  overflow: hidden;
+}
+
+.game-background {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.game-title {
+  color: white;
+  font-size: 3rem;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+  margin: 0;
+  position: relative;
+  z-index: 1;
+}
+
+.model-container {
+  position: absolute;
+  width: 700px;
+  height: 700px;
+  z-index: 1;
+}
