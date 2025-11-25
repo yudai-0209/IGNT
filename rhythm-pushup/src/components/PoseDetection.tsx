@@ -45,11 +45,13 @@ const PoseDetection = ({
   const [pushUpCount, setPushUpCount] = useState(0);
   const [currentState, setCurrentState] = useState<'up' | 'down' | 'unknown'>('unknown');
   const [currentAngle, setCurrentAngle] = useState<number>(0);
+  const [isPositionValid, setIsPositionValid] = useState<boolean>(false);
 
   const stateRef = useRef<'up' | 'down' | 'unknown'>('unknown');
   const countRef = useRef<number>(0);
   const onPoseDetectedRef = useRef(onPoseDetected);
   const onPushUpCountRef = useRef(onPushUpCount);
+  const angleHistoryRef = useRef<number[]>([]); // 過去3フレームの角度を保持
 
   // しきい値（キャリブレーションデータまたはデフォルト値）
   const upperThreshold = calibrationData?.upperThreshold ?? 160;
@@ -107,34 +109,71 @@ const PoseDetection = ({
         // 腕立て伏せ検出ロジック
         const landmarks = results.poseLandmarks;
 
-        // 右腕の角度を計算（肩-肘-手首）
-        const rightShoulder = landmarks[12]; // RIGHT_SHOULDER
-        const rightElbow = landmarks[14]; // RIGHT_ELBOW
-        const rightWrist = landmarks[16]; // RIGHT_WRIST
+        // 両腕の必要なランドマーク
+        const leftShoulder = landmarks[11];   // LEFT_SHOULDER
+        const leftElbow = landmarks[13];      // LEFT_ELBOW
+        const leftWrist = landmarks[15];      // LEFT_WRIST
+        const rightShoulder = landmarks[12];  // RIGHT_SHOULDER
+        const rightElbow = landmarks[14];     // RIGHT_ELBOW
+        const rightWrist = landmarks[16];     // RIGHT_WRIST
 
-        const angle = calculateAngle(rightShoulder, rightElbow, rightWrist);
-        const roundedAngle = Math.round(angle);
-        setCurrentAngle(roundedAngle);
+        // すべてのランドマークの可視性をチェック（visibility > 0.5）
+        const requiredLandmarks = [
+          leftShoulder, leftElbow, leftWrist,
+          rightShoulder, rightElbow, rightWrist
+        ];
 
-        // 腕立て伏せの状態判定（refから最新の値を取得）
-        if (roundedAngle < lowerThresholdRef.current && stateRef.current !== 'down') {
-          // 下がった状態
-          stateRef.current = 'down';
-          setCurrentState('down');
-        } else if (roundedAngle > upperThresholdRef.current && stateRef.current === 'down') {
-          // 上がった状態（カウントアップ）
-          stateRef.current = 'up';
-          setCurrentState('up');
-          countRef.current += 1;
-          setPushUpCount(countRef.current);
+        const allVisible = requiredLandmarks.every(
+          landmark => landmark.visibility && landmark.visibility > 0.5
+        );
 
-          if (onPushUpCountRef.current) {
-            onPushUpCountRef.current(countRef.current);
+        if (allVisible) {
+          setIsPositionValid(true);
+
+          // 右腕の角度を計算（肩-肘-手首）
+          const angle = calculateAngle(rightShoulder, rightElbow, rightWrist);
+          const rawAngle = Math.round(angle);
+
+          // 角度履歴に追加
+          angleHistoryRef.current.push(rawAngle);
+
+          // 最新の3フレームのみ保持
+          if (angleHistoryRef.current.length > 3) {
+            angleHistoryRef.current.shift();
           }
-        } else if (roundedAngle > upperThresholdRef.current && stateRef.current === 'unknown') {
-          // 初期状態を「上」に設定
-          stateRef.current = 'up';
-          setCurrentState('up');
+
+          // 3フレームの平均を計算
+          const averageAngle = Math.round(
+            angleHistoryRef.current.reduce((sum, a) => sum + a, 0) / angleHistoryRef.current.length
+          );
+
+          setCurrentAngle(averageAngle);
+
+          // 腕立て伏せの状態判定（平均角度を使用）
+          if (averageAngle < lowerThresholdRef.current && stateRef.current !== 'down') {
+            // 下がった状態
+            stateRef.current = 'down';
+            setCurrentState('down');
+          } else if (averageAngle > upperThresholdRef.current && stateRef.current === 'down') {
+            // 上がった状態（カウントアップ）
+            stateRef.current = 'up';
+            setCurrentState('up');
+            countRef.current += 1;
+            setPushUpCount(countRef.current);
+
+            if (onPushUpCountRef.current) {
+              onPushUpCountRef.current(countRef.current);
+            }
+          } else if (averageAngle > upperThresholdRef.current && stateRef.current === 'unknown') {
+            // 初期状態を「上」に設定
+            stateRef.current = 'up';
+            setCurrentState('up');
+          }
+        } else {
+          // ランドマークが見えない場合
+          setIsPositionValid(false);
+          setCurrentAngle(0);
+          angleHistoryRef.current = []; // 履歴をクリア
         }
       }
 
@@ -167,6 +206,11 @@ const PoseDetection = ({
       <video ref={videoRef} className="pose-video" width={640} height={480} autoPlay playsInline />
       <canvas ref={canvasRef} className="pose-canvas" width={640} height={480} />
       <div className="pose-debug-info">
+        {!isPositionValid && (
+          <div style={{ color: '#ff3333', fontWeight: 'bold' }}>
+            両腕を画面内に入れてください
+          </div>
+        )}
         <div>カウント: {pushUpCount}</div>
         <div>状態: {currentState === 'up' ? '上' : currentState === 'down' ? '下' : '不明'}</div>
         <div>角度: {currentAngle}°</div>
