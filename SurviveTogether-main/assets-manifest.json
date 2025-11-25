@@ -1,0 +1,18 @@
+{
+  "images": [
+    "/images/background.png",
+    "/images/background2.png",
+    "/images/title.png",
+    "/images/plank.png",
+    "/images/is_published_false.png",
+    "/images/is_published_true.png"
+  ],
+  "models": [
+    "/Models/RPGBoy1.glb",
+    "/Models/RPGGirl.glb",
+    "/Models/enemy0.glb"
+  ],
+  "videos": [
+    "/Video/TestVideo.mp4"
+  ]
+}

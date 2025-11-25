@@ -1,0 +1,34 @@
+{
+  "name": "survive-together",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "npm run generate-manifest && npm run compress-models && vite build",
+    "preview": "vite preview",
+    "generate-manifest": "node generate-assets-manifest.js",
+    "compress-models": "gltf-pipeline -i public/Models/RPGBoy1.glb -o public/Models/RPGBoy1.glb --optimize --compressTextures && gltf-pipeline -i public/Models/RPGGirl.glb -o public/Models/RPGGirl.glb --optimize --compressTextures && gltf-pipeline -i public/Models/enemy0.glb -o public/Models/enemy0.glb --optimize --compressTextures"
+  },
+  "dependencies": {
+    "@mediapipe/camera_utils": "^0.3.1675466862",
+    "@mediapipe/drawing_utils": "^0.3.1620248257",
+    "@mediapipe/pose": "^0.5.1675469404",
+    "@react-three/drei": "^9.108.3",
+    "@react-three/fiber": "^8.16.8",
+    "agora-rtc-sdk-ng": "^4.23.0",
+    "agora-rtm-sdk": "^2.2.2",
+    "firebase": "^12.2.1",
+    "path": "^0.12.7",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "three": "^0.166.1",
+    "vite": "^7.1.4"
+  },
+  "devDependencies": {
+    "@types/node": "^22.14.0",
+    "gltf-pipeline": "^4.3.0",
+    "typescript": "~5.8.2",
+    "vite": "^6.2.0"
+  }
+}

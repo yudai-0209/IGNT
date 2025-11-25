@@ -1,0 +1,124 @@
+{
+  "hash": "dffbdc2a",
+  "configHash": "eaa2e2e7",
+  "lockfileHash": "d2cf3c7d",
+  "browserHash": "f97bb9e0",
+  "optimized": {
+    "react/jsx-dev-runtime": {
+      "src": "../../node_modules/react/jsx-dev-runtime.js",
+      "file": "react_jsx-dev-runtime.js",
+      "fileHash": "8b838f7d",
+      "needsInterop": true
+    },
+    "react": {
+      "src": "../../node_modules/react/index.js",
+      "file": "react.js",
+      "fileHash": "5a4fcdc6",
+      "needsInterop": true
+    },
+    "react-dom/client": {
+      "src": "../../node_modules/react-dom/client.js",
+      "file": "react-dom_client.js",
+      "fileHash": "bab25b3a",
+      "needsInterop": true
+    },
+    "firebase/auth": {
+      "src": "../../node_modules/firebase/auth/dist/esm/index.esm.js",
+      "file": "firebase_auth.js",
+      "fileHash": "71eb8d00",
+      "needsInterop": false
+    },
+    "firebase/database": {
+      "src": "../../node_modules/firebase/database/dist/esm/index.esm.js",
+      "file": "firebase_database.js",
+      "fileHash": "aaeff063",
+      "needsInterop": false
+    },
+    "@mediapipe/pose": {
+      "src": "../../node_modules/@mediapipe/pose/pose.js",
+      "file": "@mediapipe_pose.js",
+      "fileHash": "cfa86404",
+      "needsInterop": true
+    },
+    "@mediapipe/camera_utils": {
+      "src": "../../node_modules/@mediapipe/camera_utils/camera_utils.js",
+      "file": "@mediapipe_camera_utils.js",
+      "fileHash": "105ee948",
+      "needsInterop": true
+    },
+    "@mediapipe/drawing_utils": {
+      "src": "../../node_modules/@mediapipe/drawing_utils/drawing_utils.js",
+      "file": "@mediapipe_drawing_utils.js",
+      "fileHash": "dce145d6",
+      "needsInterop": true
+    },
+    "firebase/app": {
+      "src": "../../node_modules/firebase/app/dist/esm/index.esm.js",
+      "file": "firebase_app.js",
+      "fileHash": "f4842940",
+      "needsInterop": false
+    },
+    "@react-three/drei": {
+      "src": "../../node_modules/@react-three/drei/index.js",
+      "file": "@react-three_drei.js",
+      "fileHash": "4c93579f",
+      "needsInterop": false
+    },
+    "@react-three/fiber": {
+      "src": "../../node_modules/@react-three/fiber/dist/react-three-fiber.esm.js",
+      "file": "@react-three_fiber.js",
+      "fileHash": "d4aa4f7b",
+      "needsInterop": false
+    },
+    "three": {
+      "src": "../../node_modules/three/build/three.module.js",
+      "file": "three.js",
+      "fileHash": "843c9988",
+      "needsInterop": false
+    },
+    "agora-rtm-sdk": {
+      "src": "../../node_modules/agora-rtm-sdk/agora-rtm.js",
+      "file": "agora-rtm-sdk.js",
+      "fileHash": "fd926f6e",
+      "needsInterop": true
+    },
+    "agora-rtc-sdk-ng": {
+      "src": "../../node_modules/agora-rtc-sdk-ng/AgoraRTC_N-production.js",
+      "file": "agora-rtc-sdk-ng.js",
+      "fileHash": "f5de621c",
+      "needsInterop": true
+    }
+  },
+  "chunks": {
+    "chunk-UE6PESJK": {
+      "file": "chunk-UE6PESJK.js"
+    },
+    "chunk-SEZZACAP": {
+      "file": "chunk-SEZZACAP.js"
+    },
+    "chunk-MRYO65EK": {
+      "file": "chunk-MRYO65EK.js"
+    },
+    "hls-6AL5ZCUK": {
+      "file": "hls-6AL5ZCUK.js"
+    },
+    "chunk-CHNFCEBE": {
+      "file": "chunk-CHNFCEBE.js"
+    },
+    "vision_bundle-FP4X2CN3": {
+      "file": "vision_bundle-FP4X2CN3.js"
+    },
+    "chunk-QDTBIX2K": {
+      "file": "chunk-QDTBIX2K.js"
+    },
+    "chunk-32E4H3EV": {
+      "file": "chunk-32E4H3EV.js"
+    },
+    "chunk-7SJYHRRI": {
+      "file": "chunk-7SJYHRRI.js"
+    },
+    "chunk-G3PMV62Z": {
+      "file": "chunk-G3PMV62Z.js"
+    }
+  }
+}
