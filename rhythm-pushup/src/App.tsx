@@ -6,10 +6,9 @@ import ModeSelectScreen from './components/ModeSelectScreen';
 import CalibrationScreen from './components/CalibrationScreen';
 import GameScreen from './components/GameScreen';
 import AsyncGameScreen from './components/AsyncGameScreen';
-import LoadingScreen from './components/LoadingScreen';
 import type { CalibrationData } from './types';
 
-type Screen = 'start' | 'modeSelect' | 'calibration' | 'syncLoading' | 'syncGame' | 'asyncLoading' | 'asyncGame';
+type Screen = 'start' | 'modeSelect' | 'calibration' | 'syncGame' | 'asyncGame';
 
 const SCALE_FACTOR = 0.95; // ブラウザUIを考慮して95%に縮小
 
@@ -27,20 +26,16 @@ function App() {
   };
 
   const handleSelectAsync = () => {
-    setCurrentScreen('asyncLoading');
+    setCurrentScreen('asyncGame');
   };
 
   const handleCalibrationComplete = (data: CalibrationData) => {
     setCalibrationData(data);
-    setCurrentScreen('syncLoading');
-  };
-
-  const handleAsyncLoadComplete = () => {
-    setCurrentScreen('asyncGame');
-  };
-
-  const handleSyncLoadComplete = () => {
     setCurrentScreen('syncGame');
+  };
+
+  const handleBackToStart = () => {
+    setCurrentScreen('start');
   };
 
   useEffect(() => {
@@ -88,10 +83,8 @@ function App() {
         {currentScreen === 'calibration' && (
           <CalibrationScreen onComplete={handleCalibrationComplete} />
         )}
-        {currentScreen === 'syncLoading' && <LoadingScreen onLoadComplete={handleSyncLoadComplete} />}
-        {currentScreen === 'syncGame' && <GameScreen calibrationData={calibrationData} />}
-        {currentScreen === 'asyncLoading' && <LoadingScreen onLoadComplete={handleAsyncLoadComplete} />}
-        {currentScreen === 'asyncGame' && <AsyncGameScreen />}
+        {currentScreen === 'syncGame' && <GameScreen calibrationData={calibrationData} onBackToStart={handleBackToStart} />}
+        {currentScreen === 'asyncGame' && <AsyncGameScreen onBackToStart={handleBackToStart} />}
       </div>
     </>
   );

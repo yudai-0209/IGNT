@@ -6,9 +6,10 @@ import type { CalibrationData } from '../types';
 
 interface GameScreenProps {
   calibrationData: CalibrationData | null;
+  onBackToStart: () => void;
 }
 
-function GameScreen({ calibrationData }: GameScreenProps) {
+function GameScreen({ calibrationData, onBackToStart }: GameScreenProps) {
   const [countdown, setCountdown] = useState<number>(15);
   const [isGameStarted, setIsGameStarted] = useState<boolean>(false);
   const [isModelLoaded, setIsModelLoaded] = useState<boolean>(false);

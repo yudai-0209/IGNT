@@ -2,7 +2,11 @@ import { useState, useEffect, useRef } from 'react';
 import './AsyncGameScreen.css';
 import PushUpModel from './PushUpModel';
 
-const AsyncGameScreen = () => {
+interface AsyncGameScreenProps {
+  onBackToStart: () => void;
+}
+
+const AsyncGameScreen = ({ onBackToStart }: AsyncGameScreenProps) => {
   const [countdown, setCountdown] = useState<number>(15);
   const [isGameStarted, setIsGameStarted] = useState<boolean>(false);
   const [isModelLoaded, setIsModelLoaded] = useState<boolean>(false);
@@ -174,6 +178,10 @@ const AsyncGameScreen = () => {
         if (audioRef.current) {
           audioRef.current.pause();
         }
+        // 5秒後に最初の画面に戻る
+        setTimeout(() => {
+          onBackToStart();
+        }, 5000);
         return; // アニメーション停止
       }
 
@@ -287,13 +295,17 @@ const AsyncGameScreen = () => {
           transition: 'opacity 0.1s ease'
         }}
       />
-      {countdown > 0 && (
+      {countdown > 5 && (
         <div className="async-countdown-overlay">
-          <h1 className="async-countdown-title">腕立て伏せの準備をしてください</h1>
+          <h1 className="async-countdown-title">15秒後に開始！</h1>
+          <p className="async-countdown-text">腕立て伏せの準備をしてください</p>
+        </div>
+      )}
+      {countdown <= 5 && countdown > 0 && (
+        <div className="async-countdown-overlay">
           <div className="async-countdown-display">
             {countdown}
           </div>
-          <p className="async-countdown-text">ゲーム開始まで {countdown} 秒</p>
         </div>
       )}
       {countdown === 0 && !isGameStarted && (
