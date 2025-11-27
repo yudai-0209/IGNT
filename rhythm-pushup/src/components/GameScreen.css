@@ -2,8 +2,8 @@
   position: fixed;
   top: 0;
   left: 0;
-  width: 844px;
-  height: 390px;
+  width: 100vw;
+  height: 100vh;
   display: flex;
   justify-content: center;
   align-items: center;
@@ -25,12 +25,64 @@
   text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
   margin: 0;
   position: relative;
-  z-index: 1;
+  z-index: 2;
 }
 
 .model-container {
   position: absolute;
-  width: 700px;
-  height: 700px;
+  width: 1000px;
+  height: 1000px;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
   z-index: 1;
+}
+
+.game-screen .pose-detection-container {
+  opacity: 0;
+}
+
+.circle-center {
+  position: absolute;
+  top: 66%;
+  left: 52.5%;
+  transform: translate(-50%, -50%);
+  z-index: 1;
+  opacity: 0.5;
+  width: 120%;
+  height: auto;
+}
+
+.countdown-overlay {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 10;
+  text-align: center;
+  color: white;
+  background: rgba(0, 0, 0, 0.7);
+  padding: 40px 80px;
+  border-radius: 20px;
+}
+
+.countdown-title {
+  font-size: 48px;
+  font-weight: bold;
+  margin: 0 0 20px 0;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+}
+
+.countdown-display {
+  font-size: 120px;
+  font-weight: bold;
+  margin: 20px 0;
+  color: #00ff00;
+  text-shadow: 0 0 20px rgba(0, 255, 0, 0.8);
+}
+
+.countdown-text {
+  font-size: 24px;
+  margin: 20px 0 0 0;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
 }

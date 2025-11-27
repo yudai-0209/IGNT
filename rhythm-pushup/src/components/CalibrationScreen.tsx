@@ -95,13 +95,14 @@ const CalibrationScreen = ({ onComplete }: CalibrationScreenProps) => {
   };
 
   const handleSkip = () => {
-    const defaultData: CalibrationData = {
-      upperAngle: 175,
-      lowerAngle: 85,
-      upperThreshold: 160,
-      lowerThreshold: 90,
+    // スキップ時はデフォルト値でキャリブレーション完了
+    const calibrationData: CalibrationData = {
+      upperAngle: 180,
+      lowerAngle: 90,
+      upperThreshold: 170,
+      lowerThreshold: 100,
     };
-    onComplete(defaultData);
+    onComplete(calibrationData);
   };
 
   const renderStepContent = () => {
@@ -189,6 +190,11 @@ const CalibrationScreen = ({ onComplete }: CalibrationScreenProps) => {
         );
 
       case 'complete':
+        // キャリブレーション完了後、自動的にゲーム開始
+        setTimeout(() => {
+          handleComplete();
+        }, 1500);
+
         return (
           <div className="calibration-content">
             <h1>キャリブレーション完了！</h1>
@@ -206,9 +212,6 @@ const CalibrationScreen = ({ onComplete }: CalibrationScreenProps) => {
                 <span>{lowerAngle + 10}° - {upperAngle - 10}°</span>
               </div>
             </div>
-            <button onClick={handleComplete} className="btn-primary">
-              ゲーム開始
-            </button>
           </div>
         );
     }

@@ -2,8 +2,8 @@
   position: fixed;
   top: 0;
   left: 0;
-  width: 844px;
-  height: 390px;
+  width: 100vw;
+  height: 100vh;
   display: flex;
   justify-content: center;
   align-items: center;
@@ -188,4 +188,22 @@
 .result-item span:last-child {
   color: #00ff00;
   font-weight: bold;
+}
+
+.countdown-display {
+  font-size: 6rem;
+  font-weight: bold;
+  color: #00ff00;
+  text-shadow: 0 0 30px rgba(0, 255, 0, 0.9);
+  margin: 40px 0;
+  animation: countdown-pulse 1s ease-in-out infinite;
+}
+
+@keyframes countdown-pulse {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.1);
+  }
 }
