@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Results } from '@mediapipe/pose';
+import type { Results } from '@mediapipe/pose';
 import PoseDetection from './PoseDetection';
 import type { CalibrationData } from '../types';
 import './CalibrationScreen.css';
@@ -17,13 +17,11 @@ const CalibrationScreen = ({ onComplete }: CalibrationScreenProps) => {
   const [upperAngle, setUpperAngle] = useState<number>(0);
   const [lowerAngle, setLowerAngle] = useState<number>(0);
 
-  const RECORDING_DURATION = 3000; // 3秒間記録
   const UPPER_ANGLE_MIN = 170; // 上の姿勢の最低角度
   const LOWER_ANGLE_MAX = 90; // 下の姿勢の最大角度
 
   // useRefで角度バッファを管理（再レンダリングを防ぐ）
   const angleBufferRef = useRef<number[]>([]);
-  const frameCountRef = useRef<number>(0);
 
   const handlePoseDetected = (results: Results) => {
     if (results.poseLandmarks) {

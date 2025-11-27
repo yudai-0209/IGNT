@@ -84,7 +84,6 @@ const AsyncGameScreen = () => {
   useEffect(() => {
     if (!isGameStarted) return;
 
-    const ANIMATION_DURATION = 1000; // 1秒で片道
     const GAME_DURATION = 60000; // 1分 = 60000ms
 
     const animate = (timestamp: number) => {

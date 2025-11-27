@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { Camera } from '@mediapipe/camera_utils';
-import { Pose, Results, NormalizedLandmark } from '@mediapipe/pose';
+import { Pose, POSE_CONNECTIONS } from '@mediapipe/pose';
+import type { Results, NormalizedLandmark } from '@mediapipe/pose';
 import { drawConnectors, drawLandmarks } from '@mediapipe/drawing_utils';
-import { POSE_CONNECTIONS } from '@mediapipe/pose';
 import type { CalibrationData } from '../types';
 import './PoseDetection.css';
 
@@ -54,9 +54,6 @@ const PoseDetection = ({
   onPoseDetected,
   onPushUpCount,
   onFrameUpdate,
-  calibrationData,
-  width = 320,
-  height = 240
 }: PoseDetectionProps) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
