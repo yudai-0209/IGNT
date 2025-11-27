@@ -9,7 +9,7 @@ interface GameScreenProps {
   onBackToStart: () => void;
 }
 
-function GameScreen({ calibrationData, onBackToStart }: GameScreenProps) {
+function GameScreen({ calibrationData, onBackToStart: _onBackToStart }: GameScreenProps) {
   const [countdown, setCountdown] = useState<number>(15);
   const [isGameStarted, setIsGameStarted] = useState<boolean>(false);
   const [isModelLoaded, setIsModelLoaded] = useState<boolean>(false);
