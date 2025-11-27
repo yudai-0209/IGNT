@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useGLTF } from '@react-three/drei';
 import './LoadingScreen.css';
 
@@ -7,12 +7,19 @@ interface LoadingScreenProps {
 }
 
 const LoadingScreen = ({ onLoadComplete }: LoadingScreenProps) => {
+  const [isLoaded, setIsLoaded] = useState(false);
+
   useEffect(() => {
+    console.log('3Dモデルのロード開始');
+
     // 3Dモデルのロード
     const loadModel = async () => {
       try {
-        // 実際のモデルロード
-        await useGLTF.preload('/models/pushUp.glb', true);
+        // 実際にモデルをロード
+        const gltf = await useGLTF('/models/pushUp.glb', true);
+
+        console.log('3Dモデルのロード完了', gltf);
+        setIsLoaded(true);
 
         // ロード完了後、少し待ってから次の画面へ
         setTimeout(() => {
@@ -20,6 +27,7 @@ const LoadingScreen = ({ onLoadComplete }: LoadingScreenProps) => {
         }, 500);
       } catch (error) {
         console.error('3Dモデルのロードに失敗しました:', error);
+        setIsLoaded(true);
         // エラーでも次に進む
         setTimeout(() => {
           onLoadComplete();

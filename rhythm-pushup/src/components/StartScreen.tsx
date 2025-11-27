@@ -14,9 +14,6 @@ const StartScreen = ({ onStart }: StartScreenProps) => {
       />
       <div className="start-content">
         <h1 className="start-title">リズム腕立て</h1>
-        <p className="start-description">
-          リズムに合わせて腕立て伏せをしよう！
-        </p>
         <button onClick={onStart} className="btn-start">
           ゲームスタート
         </button>
