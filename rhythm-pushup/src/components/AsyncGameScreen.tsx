@@ -3,7 +3,7 @@ import './AsyncGameScreen.css';
 import PushUpModel from './PushUpModel';
 
 const AsyncGameScreen = () => {
-  const [countdown, setCountdown] = useState<number>(5);
+  const [countdown, setCountdown] = useState<number>(15);
   const [isGameStarted, setIsGameStarted] = useState<boolean>(false);
   const [isModelLoaded, setIsModelLoaded] = useState<boolean>(false);
   const [isGameCleared, setIsGameCleared] = useState<boolean>(false);
@@ -12,6 +12,7 @@ const AsyncGameScreen = () => {
   const [circleScale, setCircleScale] = useState<number>(1.0);
   const [circleVisible, setCircleVisible] = useState<boolean>(true);
   const [remainingReps, setRemainingReps] = useState<number>(30);
+  const [demoFrame, setDemoFrame] = useState<number>(25);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const animationFrameRef = useRef<number | null>(null);
   const startTimeRef = useRef<number | null>(null);
@@ -21,8 +22,10 @@ const AsyncGameScreen = () => {
   const repCountRef = useRef<number>(0);
   const countdownStartTimeRef = useRef<number | null>(null);
   const musicStartOffsetRef = useRef<number>(0);
+  const demoStartTimeRef = useRef<number | null>(null);
+  const demoAnimationFrameRef = useRef<number | null>(null);
 
-  // 音楽を事前にプリロード（カウントダウン開始時）
+  // 音楽を事前にプリロード（マウント時）
   useEffect(() => {
     if (!audioRef.current) {
       audioRef.current = new Audio('/music/Metronome_120.mp3');
@@ -31,7 +34,61 @@ const AsyncGameScreen = () => {
       // プリロード
       audioRef.current.load();
     }
+
+    // 3Dモデルも最初からロード開始（handleModelLoadで完了通知）
   }, []);
+
+  // デモアニメーション（カウントダウン10秒→8秒の間に2回腕立て）
+  useEffect(() => {
+    if (countdown <= 10 && countdown > 0 && !isGameStarted) {
+      if (!demoStartTimeRef.current) {
+        demoStartTimeRef.current = performance.now();
+      }
+
+      const animateDemo = (timestamp: number) => {
+        const elapsed = timestamp - demoStartTimeRef.current!;
+
+        // 2秒後から4秒間で2回腕立て（1回2秒 × 2回 = 4秒）
+        if (elapsed >= 2000 && elapsed < 6000) {
+          const demoElapsed = elapsed - 2000; // 0~4000ms
+          const cycleTime = demoElapsed % 2000; // 0~2000ms (1回の腕立てサイクル)
+          const isDown = cycleTime < 1000;
+          const progress = isDown ? cycleTime / 1000 : (cycleTime - 1000) / 1000;
+
+          if (isDown) {
+            // 25 → 50
+            const frame = 25 + (25 * progress);
+            setDemoFrame(Math.round(frame));
+          } else {
+            // 50 → 25
+            const frame = 50 - (25 * progress);
+            setDemoFrame(Math.round(frame));
+          }
+        } else if (elapsed >= 6000) {
+          // デモ終了、フレームを初期位置に
+          setDemoFrame(25);
+        } else {
+          // 2秒待機中
+          setDemoFrame(25);
+        }
+
+        if (countdown > 0 && !isGameStarted) {
+          demoAnimationFrameRef.current = requestAnimationFrame(animateDemo);
+        }
+      };
+
+      demoAnimationFrameRef.current = requestAnimationFrame(animateDemo);
+
+      return () => {
+        if (demoAnimationFrameRef.current) {
+          cancelAnimationFrame(demoAnimationFrameRef.current);
+        }
+      };
+    } else {
+      demoStartTimeRef.current = null;
+      setDemoFrame(25);
+    }
+  }, [countdown, isGameStarted]);
 
   // カウントダウン処理（時刻ベースで正確に）
   useEffect(() => {
@@ -43,7 +100,7 @@ const AsyncGameScreen = () => {
 
     const checkCountdown = () => {
       const elapsed = performance.now() - countdownStartTimeRef.current!;
-      const newCountdown = Math.max(0, 5 - Math.floor(elapsed / 1000));
+      const newCountdown = Math.max(0, 15 - Math.floor(elapsed / 1000));
 
       if (newCountdown !== countdown) {
         setCountdown(newCountdown);
@@ -232,7 +289,7 @@ const AsyncGameScreen = () => {
       />
       {countdown > 0 && (
         <div className="async-countdown-overlay">
-          <h1 className="async-countdown-title">準備してください！</h1>
+          <h1 className="async-countdown-title">腕立て伏せの準備をしてください</h1>
           <div className="async-countdown-display">
             {countdown}
           </div>
@@ -273,10 +330,11 @@ const AsyncGameScreen = () => {
           <p className="async-countdown-text">お疲れ様でした！</p>
         </div>
       )}
-      <div className="async-model-container" style={{ opacity: countdown > 0 ? 0.3 : 1 }}>
+      {/* 最初からモデルをロード開始、残り10秒で表示 */}
+      <div className="async-model-container" style={{ visibility: countdown > 10 ? 'hidden' : 'visible' }}>
         <PushUpModel
           modelPath="/models/pushUp.glb"
-          currentFrame={isGameStarted ? currentFrame : 25}
+          currentFrame={isGameStarted ? currentFrame : demoFrame}
           onLoad={handleModelLoad}
         />
       </div>

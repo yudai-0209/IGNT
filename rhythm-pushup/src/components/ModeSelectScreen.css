@@ -1,9 +1,9 @@
 .mode-select-screen {
-  position: fixed;
+  position: absolute;
   top: 0;
   left: 0;
-  width: 100vw;
-  height: 100vh;
+  width: 100%;
+  height: 100%;
   display: flex;
   justify-content: center;
   align-items: center;
@@ -29,42 +29,42 @@
   text-align: center;
   color: white;
   background-color: rgba(0, 0, 0, 0.8);
-  padding: 40px 60px;
+  padding: 20px 40px;
   border-radius: 20px;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.7);
 }
 
 .mode-select-title {
-  font-size: 3rem;
-  margin-bottom: 20px;
+  font-size: 2rem;
+  margin-bottom: 10px;
   text-shadow: 3px 3px 6px rgba(0, 0, 0, 0.8);
   color: #00ff00;
 }
 
 .mode-select-description {
-  font-size: 1.2rem;
-  margin-bottom: 40px;
+  font-size: 1rem;
+  margin-bottom: 20px;
   color: #ccc;
 }
 
 .mode-buttons {
   display: flex;
-  gap: 30px;
+  gap: 20px;
 }
 
 .btn-mode {
   background-color: rgba(255, 255, 255, 0.1);
   color: white;
-  border: 3px solid #00ff00;
-  padding: 30px 40px;
+  border: 2px solid #00ff00;
+  padding: 20px 30px;
   border-radius: 15px;
   cursor: pointer;
   transition: all 0.3s;
-  min-width: 200px;
+  min-width: 150px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 15px;
+  gap: 10px;
 }
 
 .btn-mode:hover {
@@ -74,16 +74,16 @@
 }
 
 .mode-icon {
-  font-size: 3rem;
+  font-size: 2rem;
 }
 
 .mode-name {
-  font-size: 1.5rem;
+  font-size: 1.2rem;
   font-weight: bold;
 }
 
 .mode-desc {
-  font-size: 1rem;
+  font-size: 0.9rem;
   color: #aaa;
 }
 

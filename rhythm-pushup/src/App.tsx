@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import './App.css';
+import OrientationGuide from './components/OrientationGuide';
 import StartScreen from './components/StartScreen';
 import ModeSelectScreen from './components/ModeSelectScreen';
 import CalibrationScreen from './components/CalibrationScreen';
@@ -32,15 +33,18 @@ function App() {
 
   return (
     <>
-      {currentScreen === 'start' && <StartScreen onStart={handleStart} />}
-      {currentScreen === 'modeSelect' && (
-        <ModeSelectScreen onSelectSync={handleSelectSync} onSelectAsync={handleSelectAsync} />
-      )}
-      {currentScreen === 'calibration' && (
-        <CalibrationScreen onComplete={handleCalibrationComplete} />
-      )}
-      {currentScreen === 'syncGame' && <GameScreen calibrationData={calibrationData} />}
-      {currentScreen === 'asyncGame' && <AsyncGameScreen />}
+      <OrientationGuide />
+      <div className="app-container">
+        {currentScreen === 'start' && <StartScreen onStart={handleStart} />}
+        {currentScreen === 'modeSelect' && (
+          <ModeSelectScreen onSelectSync={handleSelectSync} onSelectAsync={handleSelectAsync} />
+        )}
+        {currentScreen === 'calibration' && (
+          <CalibrationScreen onComplete={handleCalibrationComplete} />
+        )}
+        {currentScreen === 'syncGame' && <GameScreen calibrationData={calibrationData} />}
+        {currentScreen === 'asyncGame' && <AsyncGameScreen />}
+      </div>
     </>
   );
 }

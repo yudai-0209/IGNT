@@ -9,7 +9,7 @@ interface GameScreenProps {
 }
 
 function GameScreen({ calibrationData }: GameScreenProps) {
-  const [countdown, setCountdown] = useState<number>(5);
+  const [countdown, setCountdown] = useState<number>(15);
   const [isGameStarted, setIsGameStarted] = useState<boolean>(false);
   const [isModelLoaded, setIsModelLoaded] = useState<boolean>(false);
   const [currentFrame, setCurrentFrame] = useState<number>(25);
@@ -120,7 +120,7 @@ function GameScreen({ calibrationData }: GameScreenProps) {
       />
       {countdown > 0 && (
         <div className="countdown-overlay">
-          <h1 className="countdown-title">準備してください！</h1>
+          <h1 className="countdown-title">腕立て伏せの準備をしてください</h1>
           <div className="countdown-display">
             {countdown}
           </div>
@@ -132,7 +132,8 @@ function GameScreen({ calibrationData }: GameScreenProps) {
           <h1 className="countdown-title">スタート！</h1>
         </div>
       )}
-      <div className="model-container" style={{ opacity: countdown > 0 ? 0.3 : 1 }}>
+      {/* 最初からモデルをロード開始、残り10秒で表示 */}
+      <div className="model-container" style={{ visibility: countdown > 10 ? 'hidden' : 'visible' }}>
         <PushUpModel
           modelPath="/models/pushUp.glb"
           currentFrame={currentFrame}
