@@ -12,12 +12,6 @@
 
 .app-container {
   position: relative;
-  width: min(100vw, 177.78vh);
-  height: min(100vh, 56.25vw);
-  max-width: 1920px;
-  max-height: 1080px;
-  min-width: 640px;
-  min-height: 360px;
   overflow: hidden;
 }
 

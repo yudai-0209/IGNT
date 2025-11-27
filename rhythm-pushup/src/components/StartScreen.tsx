@@ -1,5 +1,3 @@
-import { useEffect } from 'react';
-import { useGLTF } from '@react-three/drei';
 import './StartScreen.css';
 
 interface StartScreenProps {
@@ -7,11 +5,6 @@ interface StartScreenProps {
 }
 
 const StartScreen = ({ onStart }: StartScreenProps) => {
-  // 3Dモデルを事前ロード（スタート画面で裏でロード開始）
-  useEffect(() => {
-    useGLTF.preload('/models/pushUp.glb', true);
-  }, []);
-
   return (
     <div className="start-screen">
       <img
