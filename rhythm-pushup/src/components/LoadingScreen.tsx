@@ -73,15 +73,15 @@ const LoadingScreen = ({ onLoadComplete }: LoadingScreenProps) => {
   const loadModel = useCallback(async (): Promise<void> => {
     console.log('3Dモデルのダウンロード開始');
 
-    const blob = await loadWithProgress(
+    // ダウンロードしてブラウザキャッシュに乗せる（Blob URLは使わない）
+    await loadWithProgress(
       MODEL_PATH,
       ESTIMATED_MODEL_SIZE,
       (percent) => setProgress(prev => ({ ...prev, model: percent }))
     );
 
-    // Blob URLを作成してキャッシュ
-    const url = URL.createObjectURL(blob);
-    (window as any).__cachedModelUrl = url;
+    // モデルはキャッシュ済みフラグだけ立てる（元のパスを使う）
+    (window as any).__modelPreloaded = true;
     console.log('3Dモデルのプリロード完了');
   }, [loadWithProgress]);
 

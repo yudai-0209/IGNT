@@ -279,10 +279,10 @@ function GameScreen({ calibrationData, onBackToStart: _onBackToStart }: GameScre
           <h1 className="countdown-title">スタート！</h1>
         </div>
       )}
-      {/* プリロード済みのモデルを使用 */}
+      {/* プリロード済みのモデルを使用（元のパスで読み込み、ブラウザキャッシュから取得） */}
       <div className="model-container" style={{ visibility: countdown > 10 ? 'hidden' : 'visible' }}>
         <PushUpModel
-          modelPath={(window as any).__cachedModelUrl || '/models/pushUp.glb'}
+          modelPath="/models/pushUp.glb"
           currentFrame={isGameStarted ? currentFrame : demoFrame}
           onLoad={handleModelLoad}
         />

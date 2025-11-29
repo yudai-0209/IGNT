@@ -375,10 +375,10 @@ const AsyncGameScreen = ({ onBackToStart }: AsyncGameScreenProps) => {
           <p className="async-countdown-text">お疲れ様でした！</p>
         </div>
       )}
-      {/* プリロード済みのモデルを使用 */}
+      {/* プリロード済みのモデルを使用（元のパスで読み込み、ブラウザキャッシュから取得） */}
       <div className="async-model-container" style={{ visibility: countdown > 10 ? 'hidden' : 'visible' }}>
         <PushUpModel
-          modelPath={(window as any).__cachedModelUrl || '/models/pushUp.glb'}
+          modelPath="/models/pushUp.glb"
           currentFrame={isGameStarted ? currentFrame : demoFrame}
           onLoad={handleModelLoad}
         />
