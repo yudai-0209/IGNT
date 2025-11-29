@@ -13,6 +13,10 @@ interface LoadingState {
 const MODEL_PATH = '/models/pushUp.glb';
 const AUDIO_PATH = '/music/Metronome_120.mp3';
 
+// ファイルサイズ（バイト）- Content-Lengthが取れない場合のフォールバック
+const ESTIMATED_MODEL_SIZE = 50 * 1024 * 1024; // 50MB
+const ESTIMATED_AUDIO_SIZE = 1.2 * 1024 * 1024; // 1.2MB
+
 const LoadingScreen = ({ onLoadComplete }: LoadingScreenProps) => {
   const [progress, setProgress] = useState<LoadingState>({ model: 0, audio: 0 });
   const [isComplete, setIsComplete] = useState(false);
@@ -20,70 +24,81 @@ const LoadingScreen = ({ onLoadComplete }: LoadingScreenProps) => {
 
   const totalProgress = Math.round((progress.model + progress.audio) / 2);
 
-  const loadModel = useCallback((): Promise<void> => {
-    return new Promise((resolve, reject) => {
-      const xhr = new XMLHttpRequest();
-      xhr.open('GET', MODEL_PATH, true);
-      xhr.responseType = 'arraybuffer';
+  // fetch + ReadableStream でリアルタイム進捗を取得
+  const loadWithProgress = useCallback(async (
+    url: string,
+    estimatedSize: number,
+    onProgress: (percent: number) => void
+  ): Promise<Blob> => {
+    const response = await fetch(url);
 
-      xhr.onprogress = (event) => {
-        if (event.lengthComputable) {
-          const percent = Math.round((event.loaded / event.total) * 100);
-          setProgress(prev => ({ ...prev, model: percent }));
-        }
-      };
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
 
-      xhr.onload = () => {
-        if (xhr.status === 200) {
-          setProgress(prev => ({ ...prev, model: 100 }));
-          // GLTFLoaderのキャッシュに追加するため、Blobとして保持
-          const blob = new Blob([xhr.response], { type: 'model/gltf-binary' });
-          const url = URL.createObjectURL(blob);
-          // グローバルにキャッシュURLを保存
-          (window as any).__cachedModelUrl = url;
-          console.log('3Dモデルのプリロード完了');
-          resolve();
-        } else {
-          reject(new Error(`Model load failed: ${xhr.status}`));
-        }
-      };
+    // Content-Lengthを取得（なければ推定サイズを使用）
+    const contentLength = response.headers.get('Content-Length');
+    const totalSize = contentLength ? parseInt(contentLength, 10) : estimatedSize;
 
-      xhr.onerror = () => reject(new Error('Model load failed'));
-      xhr.send();
-    });
+    const reader = response.body?.getReader();
+    if (!reader) {
+      throw new Error('ReadableStream not supported');
+    }
+
+    const chunks: ArrayBuffer[] = [];
+    let receivedLength = 0;
+
+    while (true) {
+      const { done, value } = await reader.read();
+
+      if (done) break;
+
+      // ArrayBufferとしてコピーして保存
+      chunks.push(value.buffer.slice(value.byteOffset, value.byteOffset + value.byteLength));
+      receivedLength += value.length;
+
+      // 進捗を計算（最大99%まで、完了時に100%）
+      const percent = Math.min(Math.round((receivedLength / totalSize) * 100), 99);
+      onProgress(percent);
+    }
+
+    // 完了
+    onProgress(100);
+
+    // チャンクを結合してBlobを作成
+    const blob = new Blob(chunks);
+    return blob;
   }, []);
 
-  const loadAudio = useCallback((): Promise<void> => {
-    return new Promise((resolve, reject) => {
-      const xhr = new XMLHttpRequest();
-      xhr.open('GET', AUDIO_PATH, true);
-      xhr.responseType = 'arraybuffer';
+  const loadModel = useCallback(async (): Promise<void> => {
+    console.log('3Dモデルのダウンロード開始');
 
-      xhr.onprogress = (event) => {
-        if (event.lengthComputable) {
-          const percent = Math.round((event.loaded / event.total) * 100);
-          setProgress(prev => ({ ...prev, audio: percent }));
-        }
-      };
+    const blob = await loadWithProgress(
+      MODEL_PATH,
+      ESTIMATED_MODEL_SIZE,
+      (percent) => setProgress(prev => ({ ...prev, model: percent }))
+    );
 
-      xhr.onload = () => {
-        if (xhr.status === 200) {
-          setProgress(prev => ({ ...prev, audio: 100 }));
-          // オーディオをBlobとしてキャッシュ
-          const blob = new Blob([xhr.response], { type: 'audio/mpeg' });
-          const url = URL.createObjectURL(blob);
-          (window as any).__cachedAudioUrl = url;
-          console.log('音楽のプリロード完了');
-          resolve();
-        } else {
-          reject(new Error(`Audio load failed: ${xhr.status}`));
-        }
-      };
+    // Blob URLを作成してキャッシュ
+    const url = URL.createObjectURL(blob);
+    (window as any).__cachedModelUrl = url;
+    console.log('3Dモデルのプリロード完了');
+  }, [loadWithProgress]);
 
-      xhr.onerror = () => reject(new Error('Audio load failed'));
-      xhr.send();
-    });
-  }, []);
+  const loadAudio = useCallback(async (): Promise<void> => {
+    console.log('音楽のダウンロード開始');
+
+    const blob = await loadWithProgress(
+      AUDIO_PATH,
+      ESTIMATED_AUDIO_SIZE,
+      (percent) => setProgress(prev => ({ ...prev, audio: percent }))
+    );
+
+    // Blob URLを作成してキャッシュ
+    const url = URL.createObjectURL(blob);
+    (window as any).__cachedAudioUrl = url;
+    console.log('音楽のプリロード完了');
+  }, [loadWithProgress]);
 
   useEffect(() => {
     const loadAssets = async () => {
@@ -138,10 +153,16 @@ const LoadingScreen = ({ onLoadComplete }: LoadingScreenProps) => {
         <div className="loading-details">
           <div className="loading-item">
             <span className="loading-label">3Dモデル</span>
+            <div className="loading-item-bar">
+              <div className="loading-item-fill" style={{ width: `${progress.model}%` }} />
+            </div>
             <span className="loading-value">{progress.model}%</span>
           </div>
           <div className="loading-item">
             <span className="loading-label">音楽</span>
+            <div className="loading-item-bar">
+              <div className="loading-item-fill" style={{ width: `${progress.audio}%` }} />
+            </div>
             <span className="loading-value">{progress.audio}%</span>
           </div>
         </div>
