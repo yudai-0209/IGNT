@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import './GameScreen.css';
 import PushUpModel from './PushUpModel';
 import PoseDetection from './PoseDetection';
+import AssetLoader from './AssetLoader';
 import type { CalibrationData } from '../types';
 
 interface GameScreenProps {
@@ -10,71 +11,45 @@ interface GameScreenProps {
 }
 
 function GameScreen({ calibrationData, onBackToStart: _onBackToStart }: GameScreenProps) {
-  const [countdown, setCountdown] = useState<number>(15);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [showReady, setShowReady] = useState<boolean>(false);
+  const [countdown, setCountdown] = useState<number>(5);
   const [isGameStarted, setIsGameStarted] = useState<boolean>(false);
-  const [isModelLoaded, setIsModelLoaded] = useState<boolean>(false);
   const [targetFrame, setTargetFrame] = useState<number>(25);
   const [currentFrame, setCurrentFrame] = useState<number>(25);
   const [circleScale, setCircleScale] = useState<number>(1.0);
   const [circleVisible, setCircleVisible] = useState<boolean>(true);
-  const [demoFrame, setDemoFrame] = useState<number>(25);
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const startTimeRef = useRef<number | null>(null);
   const isGoingDownRef = useRef<boolean>(true);
   const animationFrameIdRef = useRef<number | null>(null);
   const countdownStartTimeRef = useRef<number | null>(null);
-  const demoStartTimeRef = useRef<number | null>(null);
-  const demoAnimationFrameRef = useRef<number | null>(null);
   const interpolationFrameRef = useRef<number | null>(null);
-  const wakeLockRef = useRef<globalThis.WakeLockSentinel | null>(null);
 
   const ANIMATION_DURATION = 1000; // 1秒
 
-  // 画面スリープを防止（Wake Lock API）
-  useEffect(() => {
-    const requestWakeLock = async () => {
-      try {
-        if ('wakeLock' in navigator && navigator.wakeLock) {
-          wakeLockRef.current = await navigator.wakeLock.request('screen');
-          console.log('Wake Lock: 画面スリープ防止を有効化');
-        }
-      } catch (err) {
-        console.log('Wake Lock: 取得できませんでした', err);
-      }
-    };
-
-    requestWakeLock();
-
-    // ページが再表示されたときに再取得
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible') {
-        requestWakeLock();
-      }
-    };
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-
-    return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-      if (wakeLockRef.current) {
-        wakeLockRef.current.release();
-        console.log('Wake Lock: 画面スリープ防止を解除');
-      }
-    };
-  }, []);
-
-  // プリロード済みの音楽を使用
-  useEffect(() => {
-    if (!audioRef.current) {
-      const cachedAudioUrl = (window as any).__cachedAudioUrl;
-      audioRef.current = new Audio(cachedAudioUrl || '/music/Metronome_120.mp3');
-      audioRef.current.loop = true;
-      audioRef.current.volume = 1.0;
-      if (!cachedAudioUrl) {
-        audioRef.current.load();
-      }
+  // ローディング完了時
+  const handleLoadComplete = () => {
+    // プリロードされた音楽URLを使用
+    const preloadedUrl = (window as any).__preloadedMusicUrl;
+    if (preloadedUrl) {
+      audioRef.current = new Audio(preloadedUrl);
+    } else {
+      audioRef.current = new Audio('/music/Metronome_120.mp3');
     }
-  }, []);
+    audioRef.current.loop = true;
+    audioRef.current.volume = 1.0;
+
+    setIsLoading(false);
+    setShowReady(true);
+
+    // 1秒後に「準備完了！」を消してカウントダウン開始
+    setTimeout(() => {
+      setShowReady(false);
+      countdownStartTimeRef.current = performance.now();
+    }, 1000);
+  };
 
   // フレーム補間（滑らかなアニメーション）
   useEffect(() => {
@@ -83,9 +58,8 @@ function GameScreen({ calibrationData, onBackToStart: _onBackToStart }: GameScre
     const interpolate = () => {
       setCurrentFrame(prev => {
         const diff = targetFrame - prev;
-        // 目標フレームに向かって60%ずつ近づける（リアルタイム性最優先）
         if (Math.abs(diff) < 0.01) {
-          return targetFrame; // 十分近づいたら目標値にする
+          return targetFrame;
         }
         return prev + diff * 0.6;
       });
@@ -101,17 +75,17 @@ function GameScreen({ calibrationData, onBackToStart: _onBackToStart }: GameScre
     };
   }, [targetFrame, isGameStarted]);
 
-  // カウントダウン処理（時刻ベースで正確に）
+  // カウントダウン処理（5秒）
   useEffect(() => {
-    if (!countdownStartTimeRef.current) {
-      countdownStartTimeRef.current = performance.now();
-    }
+    if (isLoading || showReady) return;
 
     let frameId: number;
 
     const checkCountdown = () => {
-      const elapsed = performance.now() - countdownStartTimeRef.current!;
-      const newCountdown = Math.max(0, 15 - Math.floor(elapsed / 1000));
+      if (!countdownStartTimeRef.current) return;
+
+      const elapsed = performance.now() - countdownStartTimeRef.current;
+      const newCountdown = Math.max(0, 5 - Math.floor(elapsed / 1000));
 
       if (newCountdown !== countdown) {
         setCountdown(newCountdown);
@@ -119,8 +93,7 @@ function GameScreen({ calibrationData, onBackToStart: _onBackToStart }: GameScre
 
       if (newCountdown > 0) {
         frameId = requestAnimationFrame(checkCountdown);
-      } else if (newCountdown === 0 && isModelLoaded) {
-        // カウントダウン終了かつモデル読み込み完了でゲーム開始
+      } else if (newCountdown === 0) {
         setIsGameStarted(true);
       }
     };
@@ -132,55 +105,7 @@ function GameScreen({ calibrationData, onBackToStart: _onBackToStart }: GameScre
         cancelAnimationFrame(frameId);
       }
     };
-  }, [countdown, isModelLoaded]);
-
-  // デモアニメーション（カウントダウン10秒→8秒の間に2回腕立て）
-  useEffect(() => {
-    if (countdown <= 10 && countdown > 0 && !isGameStarted) {
-      if (!demoStartTimeRef.current) {
-        demoStartTimeRef.current = performance.now();
-      }
-
-      const animateDemo = (timestamp: number) => {
-        const elapsed = timestamp - demoStartTimeRef.current!;
-
-        // 2秒後から4秒間で2回腕立て
-        if (elapsed >= 2000 && elapsed < 6000) {
-          const demoElapsed = elapsed - 2000;
-          const cycleTime = demoElapsed % 2000;
-          const isDown = cycleTime < 1000;
-          const progress = isDown ? cycleTime / 1000 : (cycleTime - 1000) / 1000;
-
-          if (isDown) {
-            const frame = 25 + (25 * progress);
-            setDemoFrame(Math.round(frame));
-          } else {
-            const frame = 50 - (25 * progress);
-            setDemoFrame(Math.round(frame));
-          }
-        } else if (elapsed >= 6000) {
-          setDemoFrame(25);
-        } else {
-          setDemoFrame(25);
-        }
-
-        if (countdown > 0 && !isGameStarted) {
-          demoAnimationFrameRef.current = requestAnimationFrame(animateDemo);
-        }
-      };
-
-      demoAnimationFrameRef.current = requestAnimationFrame(animateDemo);
-
-      return () => {
-        if (demoAnimationFrameRef.current) {
-          cancelAnimationFrame(demoAnimationFrameRef.current);
-        }
-      };
-    } else {
-      demoStartTimeRef.current = null;
-      setDemoFrame(25);
-    }
-  }, [countdown, isGameStarted]);
+  }, [countdown, isLoading, showReady]);
 
   // メトロノーム音楽の再生とcircleアニメーション（ゲーム開始後のみ）
   useEffect(() => {
@@ -189,9 +114,7 @@ function GameScreen({ calibrationData, onBackToStart: _onBackToStart }: GameScre
     const animate = (timestamp: number) => {
       if (!startTimeRef.current) {
         startTimeRef.current = timestamp;
-        // 初回フレームで音楽を同時に開始
         if (audioRef.current) {
-          // 音楽を0秒から確実に開始
           audioRef.current.currentTime = 0;
           audioRef.current.play().catch((error) => {
             console.error('メトロノーム音楽の再生に失敗しました:', error);
@@ -203,7 +126,6 @@ function GameScreen({ calibrationData, onBackToStart: _onBackToStart }: GameScre
       const progress = Math.min(elapsed / ANIMATION_DURATION, 1);
 
       if (isGoingDownRef.current) {
-        // 下降フェーズ: circle 1.0 → 0.4
         const scale = 1.0 - (0.6 * progress);
         setCircleScale(scale);
         setCircleVisible(true);
@@ -213,7 +135,6 @@ function GameScreen({ calibrationData, onBackToStart: _onBackToStart }: GameScre
           startTimeRef.current = timestamp - (elapsed - ANIMATION_DURATION);
         }
       } else {
-        // 上昇フェーズ: circle 0.4のまま
         setCircleScale(0.4);
         setCircleVisible(true);
 
@@ -232,7 +153,6 @@ function GameScreen({ calibrationData, onBackToStart: _onBackToStart }: GameScre
       if (animationFrameIdRef.current !== null) {
         cancelAnimationFrame(animationFrameIdRef.current);
       }
-      // 音楽を停止
       if (audioRef.current) {
         audioRef.current.pause();
         audioRef.current = null;
@@ -240,9 +160,17 @@ function GameScreen({ calibrationData, onBackToStart: _onBackToStart }: GameScre
     };
   }, [isGameStarted]);
 
-  const handleModelLoad = () => {
-    setIsModelLoaded(true);
-  };
+  // ローディング中
+  if (isLoading) {
+    return (
+      <AssetLoader
+        onLoadComplete={handleLoadComplete}
+        modelPath="/models/pushUp.glb"
+        musicPath="/music/Metronome_120.mp3"
+        imagePaths={['/image/pushup_background.jpg', '/image/circle.png']}
+      />
+    );
+  }
 
   return (
     <div className="game-screen">
@@ -261,13 +189,12 @@ function GameScreen({ calibrationData, onBackToStart: _onBackToStart }: GameScre
           transition: 'opacity 0.1s ease'
         }}
       />
-      {countdown > 5 && (
+      {showReady && (
         <div className="countdown-overlay">
-          <h1 className="countdown-title">15秒後に開始！</h1>
-          <p className="countdown-text">腕立て伏せの準備をしてください</p>
+          <h1 className="countdown-title">準備完了！</h1>
         </div>
       )}
-      {countdown <= 5 && countdown > 0 && (
+      {!showReady && countdown > 0 && !isGameStarted && (
         <div className="countdown-overlay">
           <div className="countdown-display">
             {countdown}
@@ -279,12 +206,10 @@ function GameScreen({ calibrationData, onBackToStart: _onBackToStart }: GameScre
           <h1 className="countdown-title">スタート！</h1>
         </div>
       )}
-      {/* プリロード済みのモデルを使用（元のパスで読み込み、ブラウザキャッシュから取得） */}
-      <div className="model-container" style={{ visibility: countdown > 10 ? 'hidden' : 'visible' }}>
+      <div className="model-container">
         <PushUpModel
           modelPath="/models/pushUp.glb"
-          currentFrame={isGameStarted ? currentFrame : demoFrame}
-          onLoad={handleModelLoad}
+          currentFrame={currentFrame}
         />
       </div>
       {isGameStarted && (

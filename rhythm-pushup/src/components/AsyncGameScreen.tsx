@@ -1,22 +1,24 @@
 import { useState, useEffect, useRef } from 'react';
 import './AsyncGameScreen.css';
 import PushUpModel from './PushUpModel';
+import AssetLoader from './AssetLoader';
 
 interface AsyncGameScreenProps {
   onBackToStart: () => void;
 }
 
 const AsyncGameScreen = ({ onBackToStart }: AsyncGameScreenProps) => {
-  const [countdown, setCountdown] = useState<number>(15);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [showReady, setShowReady] = useState<boolean>(false);
+  const [countdown, setCountdown] = useState<number>(5);
   const [isGameStarted, setIsGameStarted] = useState<boolean>(false);
-  const [isModelLoaded, setIsModelLoaded] = useState<boolean>(false);
   const [isGameCleared, setIsGameCleared] = useState<boolean>(false);
   const [isPaused, setIsPaused] = useState<boolean>(false);
   const [currentFrame, setCurrentFrame] = useState<number>(25);
   const [circleScale, setCircleScale] = useState<number>(1.0);
   const [circleVisible, setCircleVisible] = useState<boolean>(true);
   const [remainingReps, setRemainingReps] = useState<number>(30);
-  const [demoFrame, setDemoFrame] = useState<number>(25);
+
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const animationFrameRef = useRef<number | null>(null);
   const startTimeRef = useRef<number | null>(null);
@@ -26,118 +28,40 @@ const AsyncGameScreen = ({ onBackToStart }: AsyncGameScreenProps) => {
   const repCountRef = useRef<number>(0);
   const countdownStartTimeRef = useRef<number | null>(null);
   const musicStartOffsetRef = useRef<number>(0);
-  const demoStartTimeRef = useRef<number | null>(null);
-  const demoAnimationFrameRef = useRef<number | null>(null);
-  const wakeLockRef = useRef<globalThis.WakeLockSentinel | null>(null);
 
-  // 画面スリープを防止（Wake Lock API）
-  useEffect(() => {
-    const requestWakeLock = async () => {
-      try {
-        if ('wakeLock' in navigator && navigator.wakeLock) {
-          wakeLockRef.current = await navigator.wakeLock.request('screen');
-          console.log('Wake Lock: 画面スリープ防止を有効化');
-        }
-      } catch (err) {
-        console.log('Wake Lock: 取得できませんでした', err);
-      }
-    };
-
-    requestWakeLock();
-
-    // ページが再表示されたときに再取得
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible') {
-        requestWakeLock();
-      }
-    };
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-
-    return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-      if (wakeLockRef.current) {
-        wakeLockRef.current.release();
-        console.log('Wake Lock: 画面スリープ防止を解除');
-      }
-    };
-  }, []);
-
-  // プリロード済みの音楽を使用
-  useEffect(() => {
-    if (!audioRef.current) {
-      const cachedAudioUrl = (window as any).__cachedAudioUrl;
-      audioRef.current = new Audio(cachedAudioUrl || '/music/Metronome_120.mp3');
-      audioRef.current.loop = true;
-      audioRef.current.volume = 1.0;
-      if (!cachedAudioUrl) {
-        audioRef.current.load();
-      }
-    }
-  }, []);
-
-  // デモアニメーション（カウントダウン10秒→8秒の間に2回腕立て）
-  useEffect(() => {
-    if (countdown <= 10 && countdown > 0 && !isGameStarted) {
-      if (!demoStartTimeRef.current) {
-        demoStartTimeRef.current = performance.now();
-      }
-
-      const animateDemo = (timestamp: number) => {
-        const elapsed = timestamp - demoStartTimeRef.current!;
-
-        // 2秒後から4秒間で2回腕立て（1回2秒 × 2回 = 4秒）
-        if (elapsed >= 2000 && elapsed < 6000) {
-          const demoElapsed = elapsed - 2000; // 0~4000ms
-          const cycleTime = demoElapsed % 2000; // 0~2000ms (1回の腕立てサイクル)
-          const isDown = cycleTime < 1000;
-          const progress = isDown ? cycleTime / 1000 : (cycleTime - 1000) / 1000;
-
-          if (isDown) {
-            // 25 → 50
-            const frame = 25 + (25 * progress);
-            setDemoFrame(Math.round(frame));
-          } else {
-            // 50 → 25
-            const frame = 50 - (25 * progress);
-            setDemoFrame(Math.round(frame));
-          }
-        } else if (elapsed >= 6000) {
-          // デモ終了、フレームを初期位置に
-          setDemoFrame(25);
-        } else {
-          // 2秒待機中
-          setDemoFrame(25);
-        }
-
-        if (countdown > 0 && !isGameStarted) {
-          demoAnimationFrameRef.current = requestAnimationFrame(animateDemo);
-        }
-      };
-
-      demoAnimationFrameRef.current = requestAnimationFrame(animateDemo);
-
-      return () => {
-        if (demoAnimationFrameRef.current) {
-          cancelAnimationFrame(demoAnimationFrameRef.current);
-        }
-      };
+  // ローディング完了時
+  const handleLoadComplete = () => {
+    // プリロードされた音楽URLを使用
+    const preloadedUrl = (window as any).__preloadedMusicUrl;
+    if (preloadedUrl) {
+      audioRef.current = new Audio(preloadedUrl);
     } else {
-      demoStartTimeRef.current = null;
-      setDemoFrame(25);
+      audioRef.current = new Audio('/music/Metronome_120.mp3');
     }
-  }, [countdown, isGameStarted]);
+    audioRef.current.loop = true;
+    audioRef.current.volume = 1.0;
 
-  // カウントダウン処理（時刻ベースで正確に）
-  useEffect(() => {
-    if (!countdownStartTimeRef.current) {
+    setIsLoading(false);
+    setShowReady(true);
+
+    // 1秒後に「準備完了！」を消してカウントダウン開始
+    setTimeout(() => {
+      setShowReady(false);
       countdownStartTimeRef.current = performance.now();
-    }
+    }, 1000);
+  };
+
+  // カウントダウン処理（5秒）
+  useEffect(() => {
+    if (isLoading || showReady) return;
 
     let frameId: number;
 
     const checkCountdown = () => {
-      const elapsed = performance.now() - countdownStartTimeRef.current!;
-      const newCountdown = Math.max(0, 15 - Math.floor(elapsed / 1000));
+      if (!countdownStartTimeRef.current) return;
+
+      const elapsed = performance.now() - countdownStartTimeRef.current;
+      const newCountdown = Math.max(0, 5 - Math.floor(elapsed / 1000));
 
       if (newCountdown !== countdown) {
         setCountdown(newCountdown);
@@ -145,8 +69,7 @@ const AsyncGameScreen = ({ onBackToStart }: AsyncGameScreenProps) => {
 
       if (newCountdown > 0) {
         frameId = requestAnimationFrame(checkCountdown);
-      } else if (newCountdown === 0 && isModelLoaded) {
-        // カウントダウン終了かつモデル読み込み完了でゲーム開始
+      } else if (newCountdown === 0) {
         setIsGameStarted(true);
       }
     };
@@ -158,12 +81,11 @@ const AsyncGameScreen = ({ onBackToStart }: AsyncGameScreenProps) => {
         cancelAnimationFrame(frameId);
       }
     };
-  }, [countdown, isModelLoaded]);
+  }, [countdown, isLoading, showReady]);
 
   // 一時停止処理
   useEffect(() => {
     if (isPaused) {
-      // 一時停止時
       if (animationFrameRef.current) {
         cancelAnimationFrame(animationFrameRef.current);
       }
@@ -172,7 +94,6 @@ const AsyncGameScreen = ({ onBackToStart }: AsyncGameScreenProps) => {
       }
     }
   }, [isPaused]);
-
 
   // アニメーション処理
   useEffect(() => {
@@ -189,60 +110,46 @@ const AsyncGameScreen = ({ onBackToStart }: AsyncGameScreenProps) => {
       if (!startTimeRef.current) {
         startTimeRef.current = timestamp;
         gameStartTimeRef.current = timestamp;
-        // 初回フレームで音楽を同時に開始
         if (audioRef.current) {
-          // 音楽を0秒から確実に開始
           audioRef.current.currentTime = 0;
           audioRef.current.play().catch((error) => {
             console.error('メトロノーム音楽の再生に失敗しました:', error);
           });
-          // 最初のフレームでの音楽時刻をオフセットとして記録
           musicStartOffsetRef.current = audioRef.current.currentTime * 1000;
         }
       }
 
-      // 音楽の再生時刻を基準にする（ずれを防ぐ）
       const musicTime = audioRef.current ? (audioRef.current.currentTime * 1000) - musicStartOffsetRef.current : 0;
 
-      // ゲーム開始からの経過時間をチェック
       if (musicTime >= GAME_DURATION) {
-        // 1分経過、ゲームクリア
         setIsGameCleared(true);
         if (audioRef.current) {
           audioRef.current.pause();
         }
-        // 5秒後に最初の画面に戻る
         setTimeout(() => {
           onBackToStart();
         }, 5000);
-        return; // アニメーション停止
+        return;
       }
 
-      // 音楽時刻から現在のサイクル位置を計算（2秒で1サイクル）
-      const cycleTime = musicTime % 2000; // 0~2000ms
+      const cycleTime = musicTime % 2000;
       const isDownPhase = cycleTime < 1000;
       const phaseProgress = isDownPhase ? cycleTime / 1000 : (cycleTime - 1000) / 1000;
 
       if (isDownPhase) {
-        // 下降フェーズ: 25 → 50
         const frame = 25 + (25 * phaseProgress);
         setCurrentFrame(Math.round(frame));
-
-        // circle画像: 最大(1.0)から最小(0.4)に縮小
         const scale = 1.0 - (0.6 * phaseProgress);
         setCircleScale(scale);
         setCircleVisible(true);
 
-        // 方向フラグを更新
         if (!isGoingDownRef.current) {
           isGoingDownRef.current = true;
         }
       } else {
-        // 上昇フェーズ: 50 → 25
         const frame = 50 - (25 * phaseProgress);
         setCurrentFrame(Math.round(frame));
 
-        // circle画像: 0.7秒間小さいまま表示、その後非表示
         if (phaseProgress <= 0.7) {
           setCircleScale(0.4);
           setCircleVisible(true);
@@ -250,7 +157,6 @@ const AsyncGameScreen = ({ onBackToStart }: AsyncGameScreenProps) => {
           setCircleVisible(false);
         }
 
-        // 方向フラグを更新 & カウント更新
         if (isGoingDownRef.current) {
           isGoingDownRef.current = false;
           repCountRef.current += 1;
@@ -268,7 +174,7 @@ const AsyncGameScreen = ({ onBackToStart }: AsyncGameScreenProps) => {
         cancelAnimationFrame(animationFrameRef.current);
       }
     };
-  }, [isGameStarted, isPaused]);
+  }, [isGameStarted, isPaused, onBackToStart]);
 
   // クリーンアップ
   useEffect(() => {
@@ -279,10 +185,6 @@ const AsyncGameScreen = ({ onBackToStart }: AsyncGameScreenProps) => {
       }
     };
   }, []);
-
-  const handleModelLoad = () => {
-    setIsModelLoaded(true);
-  };
 
   const handlePause = () => {
     setIsPaused(true);
@@ -297,7 +199,6 @@ const AsyncGameScreen = ({ onBackToStart }: AsyncGameScreenProps) => {
     startTimeRef.current = startTimeRef.current! + pauseDuration;
     gameStartTimeRef.current = gameStartTimeRef.current! + pauseDuration;
 
-    // 音楽を再開
     if (audioRef.current) {
       audioRef.current.play().catch((error) => {
         console.error('音楽の再生に失敗しました:', error);
@@ -310,6 +211,18 @@ const AsyncGameScreen = ({ onBackToStart }: AsyncGameScreenProps) => {
   const handleRestart = () => {
     window.location.reload();
   };
+
+  // ローディング中
+  if (isLoading) {
+    return (
+      <AssetLoader
+        onLoadComplete={handleLoadComplete}
+        modelPath="/models/pushUp.glb"
+        musicPath="/music/Metronome_120.mp3"
+        imagePaths={['/image/pushup_background.jpg', '/image/circle.png']}
+      />
+    );
+  }
 
   return (
     <div className="async-game-screen">
@@ -328,13 +241,12 @@ const AsyncGameScreen = ({ onBackToStart }: AsyncGameScreenProps) => {
           transition: 'opacity 0.1s ease'
         }}
       />
-      {countdown > 5 && (
+      {showReady && (
         <div className="async-countdown-overlay">
-          <h1 className="async-countdown-title">15秒後に開始！</h1>
-          <p className="async-countdown-text">腕立て伏せの準備をしてください</p>
+          <h1 className="async-countdown-title">準備完了！</h1>
         </div>
       )}
-      {countdown <= 5 && countdown > 0 && (
+      {!showReady && countdown > 0 && !isGameStarted && (
         <div className="async-countdown-overlay">
           <div className="async-countdown-display">
             {countdown}
@@ -375,12 +287,10 @@ const AsyncGameScreen = ({ onBackToStart }: AsyncGameScreenProps) => {
           <p className="async-countdown-text">お疲れ様でした！</p>
         </div>
       )}
-      {/* プリロード済みのモデルを使用（元のパスで読み込み、ブラウザキャッシュから取得） */}
-      <div className="async-model-container" style={{ visibility: countdown > 10 ? 'hidden' : 'visible' }}>
+      <div className="async-model-container">
         <PushUpModel
           modelPath="/models/pushUp.glb"
-          currentFrame={isGameStarted ? currentFrame : demoFrame}
-          onLoad={handleModelLoad}
+          currentFrame={currentFrame}
         />
       </div>
     </div>

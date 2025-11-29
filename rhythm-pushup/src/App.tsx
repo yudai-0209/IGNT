@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import './App.css';
 import OrientationGuide from './components/OrientationGuide';
-import LoadingScreen from './components/LoadingScreen';
 import StartScreen from './components/StartScreen';
 import ModeSelectScreen from './components/ModeSelectScreen';
 import CalibrationScreen from './components/CalibrationScreen';
@@ -9,18 +8,14 @@ import GameScreen from './components/GameScreen';
 import AsyncGameScreen from './components/AsyncGameScreen';
 import type { CalibrationData } from './types';
 
-type Screen = 'loading' | 'start' | 'modeSelect' | 'calibration' | 'syncGame' | 'asyncGame';
+type Screen = 'start' | 'modeSelect' | 'calibration' | 'syncGame' | 'asyncGame';
 
 const SCALE_FACTOR = 0.95; // ブラウザUIを考慮して95%に縮小
 
 function App() {
-  const [currentScreen, setCurrentScreen] = useState<Screen>('loading');
+  const [currentScreen, setCurrentScreen] = useState<Screen>('start');
   const [calibrationData, setCalibrationData] = useState<CalibrationData | null>(null);
   const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
-
-  const handleLoadComplete = () => {
-    setCurrentScreen('start');
-  };
 
   const handleStart = () => {
     setCurrentScreen('modeSelect');
@@ -81,7 +76,6 @@ function App() {
           height: `${containerSize.height}px`
         }}
       >
-        {currentScreen === 'loading' && <LoadingScreen onLoadComplete={handleLoadComplete} />}
         {currentScreen === 'start' && <StartScreen onStart={handleStart} />}
         {currentScreen === 'modeSelect' && (
           <ModeSelectScreen onSelectSync={handleSelectSync} onSelectAsync={handleSelectAsync} />
