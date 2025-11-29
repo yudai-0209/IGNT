@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useGLTF } from '@react-three/drei';
 import './LoadingScreen.css';
 
@@ -22,146 +22,22 @@ const LoadingScreen = ({ onLoadComplete }: LoadingScreenProps) => {
   const [progress, setProgress] = useState<LoadingState>({ model: 0, audio: 0 });
   const [isComplete, setIsComplete] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const isLoadingRef = useRef(false);
 
   const totalProgress = Math.round((progress.model + progress.audio) / 2);
 
-  // fetch + ReadableStream でリアルタイム進捗を取得し、Cache APIでキャッシュ
-  const loadWithProgress = useCallback(async (
-    url: string,
-    estimatedSize: number,
-    onProgress: (percent: number) => void
-  ): Promise<void> => {
-    const response = await fetch(url);
-
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-
-    // Content-Lengthを取得（なければ推定サイズを使用）
-    const contentLength = response.headers.get('Content-Length');
-    const totalSize = contentLength ? parseInt(contentLength, 10) : estimatedSize;
-
-    const reader = response.body?.getReader();
-    if (!reader) {
-      throw new Error('ReadableStream not supported');
-    }
-
-    const chunks: Uint8Array[] = [];
-    let receivedLength = 0;
-
-    while (true) {
-      const { done, value } = await reader.read();
-
-      if (done) break;
-
-      chunks.push(value);
-      receivedLength += value.length;
-
-      // 進捗を計算（最大99%まで、完了時に100%）
-      const percent = Math.min(Math.round((receivedLength / totalSize) * 100), 99);
-      onProgress(percent);
-    }
-
-    // 完了
-    onProgress(100);
-
-    // チャンクを結合
-    const totalLength = chunks.reduce((acc, chunk) => acc + chunk.length, 0);
-    const combined = new Uint8Array(totalLength);
-    let offset = 0;
-    for (const chunk of chunks) {
-      combined.set(chunk, offset);
-      offset += chunk.length;
-    }
-
-    // Cache APIでキャッシュに保存（useGLTF.preload()がここから読む）
-    if ('caches' in window) {
-      try {
-        const cache = await caches.open('model-cache');
-        const cachedResponse = new Response(combined, {
-          headers: {
-            'Content-Type': url.endsWith('.glb') ? 'model/gltf-binary' : 'audio/mpeg',
-            'Content-Length': String(totalLength),
-          },
-        });
-        await cache.put(url, cachedResponse);
-        console.log(`Cache APIでキャッシュ保存: ${url}`);
-      } catch (e) {
-        console.log('Cache API保存失敗、ブラウザキャッシュに依存:', e);
-      }
-    }
-  }, []);
-
-  const loadModel = useCallback(async (): Promise<void> => {
-    console.log('3Dモデルのダウンロード開始');
-
-    // ダウンロードしてブラウザキャッシュに乗せる（プログレス表示用）
-    await loadWithProgress(
-      MODEL_PATH,
-      ESTIMATED_MODEL_SIZE,
-      (percent) => setProgress(prev => ({ ...prev, model: percent }))
-    );
-
-    // drei内部キャッシュにもプリロード（パース処理も事前に実行）
-    useGLTF.preload(MODEL_PATH);
-
-    (window as any).__modelPreloaded = true;
-    console.log('3Dモデルのプリロード完了');
-  }, [loadWithProgress]);
-
-  const loadAudio = useCallback(async (): Promise<void> => {
-    console.log('音楽のダウンロード開始');
-
-    const response = await fetch(AUDIO_PATH);
-    if (!response.ok) {
-      throw new Error(`Audio load failed: ${response.status}`);
-    }
-
-    const contentLength = response.headers.get('Content-Length');
-    const totalSize = contentLength ? parseInt(contentLength, 10) : ESTIMATED_AUDIO_SIZE;
-
-    const reader = response.body?.getReader();
-    if (!reader) {
-      throw new Error('ReadableStream not supported');
-    }
-
-    const chunks: Uint8Array[] = [];
-    let receivedLength = 0;
-
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-
-      chunks.push(value);
-      receivedLength += value.length;
-
-      const percent = Math.min(Math.round((receivedLength / totalSize) * 100), 99);
-      setProgress(prev => ({ ...prev, audio: percent }));
-    }
-
-    setProgress(prev => ({ ...prev, audio: 100 }));
-
-    // チャンクを結合してBlobを作成
-    const totalLength = chunks.reduce((acc, chunk) => acc + chunk.length, 0);
-    const combined = new Uint8Array(totalLength);
-    let offset = 0;
-    for (const chunk of chunks) {
-      combined.set(chunk, offset);
-      offset += chunk.length;
-    }
-    const blob = new Blob([combined], { type: 'audio/mpeg' });
-    const url = URL.createObjectURL(blob);
-    (window as any).__cachedAudioUrl = url;
-    console.log('音楽のプリロード完了');
-  }, []);
-
   useEffect(() => {
+    // 2重実行を防ぐ
+    if (isLoadingRef.current) return;
+    isLoadingRef.current = true;
+
     const loadAssets = async () => {
       try {
         console.log('アセットのプリロード開始');
 
-        // 3Dモデルと音楽を並列でロード
-        await Promise.all([loadModel(), loadAudio()]);
+        // 音楽を先にロード（軽いので）、その後モデルをロード
+        await loadAudio();
+        await loadModel();
 
         console.log('全アセットのプリロード完了');
         setIsComplete(true);
@@ -181,8 +57,119 @@ const LoadingScreen = ({ onLoadComplete }: LoadingScreenProps) => {
       }
     };
 
+    const loadModel = async (): Promise<void> => {
+      console.log('3Dモデルのダウンロード開始');
+
+      const response = await fetch(MODEL_PATH);
+      if (!response.ok) {
+        throw new Error(`Model load failed: ${response.status}`);
+      }
+
+      const contentLength = response.headers.get('Content-Length');
+      const totalSize = contentLength ? parseInt(contentLength, 10) : ESTIMATED_MODEL_SIZE;
+
+      const reader = response.body?.getReader();
+      if (!reader) {
+        throw new Error('ReadableStream not supported');
+      }
+
+      const chunks: Uint8Array[] = [];
+      let receivedLength = 0;
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        chunks.push(value);
+        receivedLength += value.length;
+
+        const percent = Math.min(Math.round((receivedLength / totalSize) * 100), 99);
+        setProgress(prev => ({ ...prev, model: percent }));
+      }
+
+      setProgress(prev => ({ ...prev, model: 100 }));
+
+      // チャンクを結合
+      const totalLength = chunks.reduce((acc, chunk) => acc + chunk.length, 0);
+      const combined = new Uint8Array(totalLength);
+      let offset = 0;
+      for (const chunk of chunks) {
+        combined.set(chunk, offset);
+        offset += chunk.length;
+      }
+
+      // Cache APIでキャッシュに保存
+      if ('caches' in window) {
+        try {
+          const cache = await caches.open('model-cache');
+          const cachedResponse = new Response(combined, {
+            headers: {
+              'Content-Type': 'model/gltf-binary',
+              'Content-Length': String(totalLength),
+            },
+          });
+          await cache.put(MODEL_PATH, cachedResponse);
+          console.log('Cache APIでキャッシュ保存完了');
+        } catch (e) {
+          console.log('Cache API保存失敗:', e);
+        }
+      }
+
+      // drei内部キャッシュにもプリロード
+      useGLTF.preload(MODEL_PATH);
+
+      (window as any).__modelPreloaded = true;
+      console.log('3Dモデルのプリロード完了');
+    };
+
+    const loadAudio = async (): Promise<void> => {
+      console.log('音楽のダウンロード開始');
+
+      const response = await fetch(AUDIO_PATH);
+      if (!response.ok) {
+        throw new Error(`Audio load failed: ${response.status}`);
+      }
+
+      const contentLength = response.headers.get('Content-Length');
+      const totalSize = contentLength ? parseInt(contentLength, 10) : ESTIMATED_AUDIO_SIZE;
+
+      const reader = response.body?.getReader();
+      if (!reader) {
+        throw new Error('ReadableStream not supported');
+      }
+
+      const chunks: Uint8Array[] = [];
+      let receivedLength = 0;
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        chunks.push(value);
+        receivedLength += value.length;
+
+        const percent = Math.min(Math.round((receivedLength / totalSize) * 100), 99);
+        setProgress(prev => ({ ...prev, audio: percent }));
+      }
+
+      setProgress(prev => ({ ...prev, audio: 100 }));
+
+      // チャンクを結合してBlobを作成
+      const totalLength = chunks.reduce((acc, chunk) => acc + chunk.length, 0);
+      const combined = new Uint8Array(totalLength);
+      let offset = 0;
+      for (const chunk of chunks) {
+        combined.set(chunk, offset);
+        offset += chunk.length;
+      }
+      const blob = new Blob([combined], { type: 'audio/mpeg' });
+      const url = URL.createObjectURL(blob);
+      (window as any).__cachedAudioUrl = url;
+      console.log('音楽のプリロード完了');
+    };
+
     loadAssets();
-  }, [loadModel, loadAudio, onLoadComplete]);
+  }, [onLoadComplete]);
 
   return (
     <div className="loading-screen">
