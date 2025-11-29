@@ -155,9 +155,9 @@ const AssetLoader = ({ onLoadComplete, modelPath, musicPath, imagePaths }: Asset
               <span>3Dモデル</span>
               <span>{Math.round(modelProgress)}%</span>
             </div>
-            <div className="progress-bar-container">
+            <div className="total-progress-bar-container" style={{ height: '12px' }}>
               <div
-                className="progress-bar"
+                className="total-progress-bar"
                 style={{ width: `${modelProgress}%` }}
               />
             </div>
@@ -168,9 +168,9 @@ const AssetLoader = ({ onLoadComplete, modelPath, musicPath, imagePaths }: Asset
               <span>音楽</span>
               <span>{Math.round(musicProgress)}%</span>
             </div>
-            <div className="progress-bar-container">
+            <div className="total-progress-bar-container" style={{ height: '12px' }}>
               <div
-                className="progress-bar"
+                className="total-progress-bar"
                 style={{ width: `${musicProgress}%` }}
               />
             </div>
@@ -181,9 +181,9 @@ const AssetLoader = ({ onLoadComplete, modelPath, musicPath, imagePaths }: Asset
               <span>イラスト</span>
               <span>{Math.round(imageProgress)}%</span>
             </div>
-            <div className="progress-bar-container">
+            <div className="total-progress-bar-container" style={{ height: '12px' }}>
               <div
-                className="progress-bar"
+                className="total-progress-bar"
                 style={{ width: `${imageProgress}%` }}
               />
             </div>
