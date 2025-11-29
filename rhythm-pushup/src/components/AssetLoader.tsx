@@ -40,7 +40,7 @@ const AssetLoader = ({ onLoadComplete, modelPath, musicPath, imagePaths }: Asset
       // onProgress
       (xhr) => {
         if (xhr.lengthComputable) {
-          const percent = (xhr.loaded / xhr.total) * 100;
+          const percent = Math.min((xhr.loaded / xhr.total) * 100, 100);
           setModelProgress(percent);
           console.log(`3Dモデル: ${percent.toFixed(1)}%`);
         }
