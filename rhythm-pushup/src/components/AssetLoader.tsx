@@ -1,6 +1,6 @@
-import { useState, useEffect, useCallback } from 'react';
-import { Canvas } from '@react-three/fiber';
-import { useGLTF, useProgress } from '@react-three/drei';
+import { useState, useEffect } from 'react';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js';
 import './AssetLoader.css';
 
 interface AssetLoaderProps {
@@ -10,23 +10,6 @@ interface AssetLoaderProps {
   imagePaths: string[];
 }
 
-// 3Dモデルをプリロードするための内部コンポーネント
-const ModelPreloader = ({ url, onProgress, onLoaded }: { url: string; onProgress: (progress: number) => void; onLoaded: () => void }) => {
-  const { progress, loaded, total } = useProgress();
-
-  useEffect(() => {
-    onProgress(progress);
-    if (progress >= 100 && loaded === total && total > 0) {
-      onLoaded();
-    }
-  }, [progress, loaded, total, onProgress, onLoaded]);
-
-  // 実際にモデルをロード
-  useGLTF(url, true);
-
-  return null;
-};
-
 const AssetLoader = ({ onLoadComplete, modelPath, musicPath, imagePaths }: AssetLoaderProps) => {
   const [modelProgress, setModelProgress] = useState(0);
   const [musicProgress, setMusicProgress] = useState(0);
@@ -35,14 +18,45 @@ const AssetLoader = ({ onLoadComplete, modelPath, musicPath, imagePaths }: Asset
   const [isMusicLoaded, setIsMusicLoaded] = useState(false);
   const [isImagesLoaded, setIsImagesLoaded] = useState(false);
 
-  // 3Dモデルのプログレス更新
-  const handleModelProgress = useCallback((progress: number) => {
-    setModelProgress(progress);
-  }, []);
+  // 3Dモデルのロード（GLTFLoaderを直接使用）
+  useEffect(() => {
+    const loader = new GLTFLoader();
 
-  const handleModelLoaded = useCallback(() => {
-    setIsModelLoaded(true);
-  }, []);
+    // Draco圧縮対応
+    const dracoLoader = new DRACOLoader();
+    dracoLoader.setDecoderPath('https://www.gstatic.com/draco/versioned/decoders/1.5.6/');
+    loader.setDRACOLoader(dracoLoader);
+
+    loader.load(
+      modelPath,
+      // onLoad
+      (gltf) => {
+        console.log('3Dモデルロード完了', gltf);
+        setModelProgress(100);
+        setIsModelLoaded(true);
+        // GLTFをグローバルにキャッシュ（後でuseGLTFがキャッシュから取得）
+        (window as any).__preloadedGLTF = gltf;
+      },
+      // onProgress
+      (xhr) => {
+        if (xhr.lengthComputable) {
+          const percent = (xhr.loaded / xhr.total) * 100;
+          setModelProgress(percent);
+          console.log(`3Dモデル: ${percent.toFixed(1)}%`);
+        }
+      },
+      // onError
+      (error) => {
+        console.error('3Dモデルのロードに失敗しました:', error);
+        setModelProgress(100);
+        setIsModelLoaded(true);
+      }
+    );
+
+    return () => {
+      dracoLoader.dispose();
+    };
+  }, [modelPath]);
 
   // 音楽のロード
   useEffect(() => {
@@ -54,6 +68,7 @@ const AssetLoader = ({ onLoadComplete, modelPath, musicPath, imagePaths }: Asset
       if (event.lengthComputable) {
         const percent = (event.loaded / event.total) * 100;
         setMusicProgress(percent);
+        console.log(`音楽: ${percent.toFixed(1)}%`);
       }
     };
 
@@ -65,6 +80,7 @@ const AssetLoader = ({ onLoadComplete, modelPath, musicPath, imagePaths }: Asset
         const blob = xhr.response;
         const url = URL.createObjectURL(blob);
         (window as any).__preloadedMusicUrl = url;
+        console.log('音楽ロード完了');
       }
     };
 
@@ -96,14 +112,18 @@ const AssetLoader = ({ onLoadComplete, modelPath, musicPath, imagePaths }: Asset
       const img = new Image();
       img.onload = () => {
         loadedCount++;
-        setImageProgress((loadedCount / totalImages) * 100);
+        const percent = (loadedCount / totalImages) * 100;
+        setImageProgress(percent);
+        console.log(`イラスト: ${percent.toFixed(1)}%`);
         if (loadedCount === totalImages) {
           setIsImagesLoaded(true);
+          console.log('イラストロード完了');
         }
       };
       img.onerror = () => {
         loadedCount++;
-        setImageProgress((loadedCount / totalImages) * 100);
+        const percent = (loadedCount / totalImages) * 100;
+        setImageProgress(percent);
         if (loadedCount === totalImages) {
           setIsImagesLoaded(true);
         }
@@ -115,6 +135,7 @@ const AssetLoader = ({ onLoadComplete, modelPath, musicPath, imagePaths }: Asset
   // 全てロード完了したらコールバック
   useEffect(() => {
     if (isModelLoaded && isMusicLoaded && isImagesLoaded) {
+      console.log('全アセットロード完了');
       setTimeout(() => {
         onLoadComplete();
       }, 300);
@@ -178,17 +199,6 @@ const AssetLoader = ({ onLoadComplete, modelPath, musicPath, imagePaths }: Asset
           </div>
           <p className="total-progress-text">{Math.round(totalProgress)}% 完了</p>
         </div>
-      </div>
-
-      {/* 3Dモデルをプリロードするための非表示Canvas */}
-      <div style={{ position: 'absolute', opacity: 0, pointerEvents: 'none', width: 1, height: 1 }}>
-        <Canvas>
-          <ModelPreloader
-            url={modelPath}
-            onProgress={handleModelProgress}
-            onLoaded={handleModelLoaded}
-          />
-        </Canvas>
       </div>
     </div>
   );
