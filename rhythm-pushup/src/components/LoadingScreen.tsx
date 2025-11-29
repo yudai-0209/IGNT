@@ -25,12 +25,12 @@ const LoadingScreen = ({ onLoadComplete }: LoadingScreenProps) => {
 
   const totalProgress = Math.round((progress.model + progress.audio) / 2);
 
-  // fetch + ReadableStream でリアルタイム進捗を取得
+  // fetch + ReadableStream でリアルタイム進捗を取得し、Cache APIでキャッシュ
   const loadWithProgress = useCallback(async (
     url: string,
     estimatedSize: number,
     onProgress: (percent: number) => void
-  ): Promise<Blob> => {
+  ): Promise<void> => {
     const response = await fetch(url);
 
     if (!response.ok) {
@@ -46,7 +46,7 @@ const LoadingScreen = ({ onLoadComplete }: LoadingScreenProps) => {
       throw new Error('ReadableStream not supported');
     }
 
-    const chunks: ArrayBuffer[] = [];
+    const chunks: Uint8Array[] = [];
     let receivedLength = 0;
 
     while (true) {
@@ -54,8 +54,7 @@ const LoadingScreen = ({ onLoadComplete }: LoadingScreenProps) => {
 
       if (done) break;
 
-      // ArrayBufferとしてコピーして保存
-      chunks.push(value.buffer.slice(value.byteOffset, value.byteOffset + value.byteLength));
+      chunks.push(value);
       receivedLength += value.length;
 
       // 進捗を計算（最大99%まで、完了時に100%）
@@ -66,9 +65,31 @@ const LoadingScreen = ({ onLoadComplete }: LoadingScreenProps) => {
     // 完了
     onProgress(100);
 
-    // チャンクを結合してBlobを作成
-    const blob = new Blob(chunks);
-    return blob;
+    // チャンクを結合
+    const totalLength = chunks.reduce((acc, chunk) => acc + chunk.length, 0);
+    const combined = new Uint8Array(totalLength);
+    let offset = 0;
+    for (const chunk of chunks) {
+      combined.set(chunk, offset);
+      offset += chunk.length;
+    }
+
+    // Cache APIでキャッシュに保存（useGLTF.preload()がここから読む）
+    if ('caches' in window) {
+      try {
+        const cache = await caches.open('model-cache');
+        const cachedResponse = new Response(combined, {
+          headers: {
+            'Content-Type': url.endsWith('.glb') ? 'model/gltf-binary' : 'audio/mpeg',
+            'Content-Length': String(totalLength),
+          },
+        });
+        await cache.put(url, cachedResponse);
+        console.log(`Cache APIでキャッシュ保存: ${url}`);
+      } catch (e) {
+        console.log('Cache API保存失敗、ブラウザキャッシュに依存:', e);
+      }
+    }
   }, []);
 
   const loadModel = useCallback(async (): Promise<void> => {
@@ -91,17 +112,48 @@ const LoadingScreen = ({ onLoadComplete }: LoadingScreenProps) => {
   const loadAudio = useCallback(async (): Promise<void> => {
     console.log('音楽のダウンロード開始');
 
-    const blob = await loadWithProgress(
-      AUDIO_PATH,
-      ESTIMATED_AUDIO_SIZE,
-      (percent) => setProgress(prev => ({ ...prev, audio: percent }))
-    );
+    const response = await fetch(AUDIO_PATH);
+    if (!response.ok) {
+      throw new Error(`Audio load failed: ${response.status}`);
+    }
 
-    // Blob URLを作成してキャッシュ
+    const contentLength = response.headers.get('Content-Length');
+    const totalSize = contentLength ? parseInt(contentLength, 10) : ESTIMATED_AUDIO_SIZE;
+
+    const reader = response.body?.getReader();
+    if (!reader) {
+      throw new Error('ReadableStream not supported');
+    }
+
+    const chunks: Uint8Array[] = [];
+    let receivedLength = 0;
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      chunks.push(value);
+      receivedLength += value.length;
+
+      const percent = Math.min(Math.round((receivedLength / totalSize) * 100), 99);
+      setProgress(prev => ({ ...prev, audio: percent }));
+    }
+
+    setProgress(prev => ({ ...prev, audio: 100 }));
+
+    // チャンクを結合してBlobを作成
+    const totalLength = chunks.reduce((acc, chunk) => acc + chunk.length, 0);
+    const combined = new Uint8Array(totalLength);
+    let offset = 0;
+    for (const chunk of chunks) {
+      combined.set(chunk, offset);
+      offset += chunk.length;
+    }
+    const blob = new Blob([combined], { type: 'audio/mpeg' });
     const url = URL.createObjectURL(blob);
     (window as any).__cachedAudioUrl = url;
     console.log('音楽のプリロード完了');
-  }, [loadWithProgress]);
+  }, []);
 
   useEffect(() => {
     const loadAssets = async () => {
