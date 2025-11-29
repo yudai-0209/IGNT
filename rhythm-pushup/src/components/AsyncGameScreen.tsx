@@ -133,35 +133,46 @@ const AsyncGameScreen = ({ onBackToStart }: AsyncGameScreenProps) => {
       }
 
       const cycleTime = musicTime % 2000;
-      const isDownPhase = cycleTime < 1000;
-      const phaseProgress = isDownPhase ? cycleTime / 1000 : (cycleTime - 1000) / 1000;
 
-      if (isDownPhase) {
-        const frame = 25 + (25 * phaseProgress);
+      if (cycleTime < 500) {
+        // 1拍目 (0-500ms): 下降（0.5秒）
+        const progress = cycleTime / 500; // 0→1
+        const frame = 25 + (25 * progress); // 25→50
         setCurrentFrame(Math.round(frame));
-        const scale = 1.0 - (0.6 * phaseProgress);
+        const scale = 1.0 - (0.6 * progress); // 1.0→0.4
         setCircleScale(scale);
         setCircleVisible(true);
 
-        if (!isGoingDownRef.current) {
-          isGoingDownRef.current = true;
-        }
-      } else {
-        const frame = 50 - (25 * phaseProgress);
-        setCurrentFrame(Math.round(frame));
+        isGoingDownRef.current = true;
+      } else if (cycleTime < 1000) {
+        // 2拍目 (500-1000ms): 静止（最下点）
+        setCurrentFrame(50);
+        setCircleScale(0.4);
+        setCircleVisible(true);
 
-        if (phaseProgress <= 0.7) {
-          setCircleScale(0.4);
-          setCircleVisible(true);
-        } else {
-          setCircleVisible(false);
-        }
-
+        // 1拍目（下降）から2拍目（静止）に入った瞬間にカウント
         if (isGoingDownRef.current) {
           isGoingDownRef.current = false;
           repCountRef.current += 1;
           setRemainingReps(30 - repCountRef.current);
         }
+      } else if (cycleTime < 1500) {
+        // 3拍目 (1000-1500ms): 上昇（0.5秒）
+        const progress = (cycleTime - 1000) / 500; // 0→1
+        const frame = 50 - (25 * progress); // 50→25
+        setCurrentFrame(Math.round(frame));
+        const scale = 0.4 + (0.6 * progress); // 0.4→1.0
+        setCircleScale(scale);
+        setCircleVisible(true);
+
+        isGoingDownRef.current = false;
+      } else {
+        // 4拍目 (1500-2000ms): 静止（最上点）
+        setCurrentFrame(25);
+        setCircleScale(1.0);
+        setCircleVisible(true);
+
+        isGoingDownRef.current = false;
       }
 
       animationFrameRef.current = requestAnimationFrame(animate);
