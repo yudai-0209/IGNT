@@ -27,8 +27,41 @@ function GameScreen({ calibrationData, onBackToStart: _onBackToStart }: GameScre
   const demoStartTimeRef = useRef<number | null>(null);
   const demoAnimationFrameRef = useRef<number | null>(null);
   const interpolationFrameRef = useRef<number | null>(null);
+  const wakeLockRef = useRef<globalThis.WakeLockSentinel | null>(null);
 
   const ANIMATION_DURATION = 1000; // 1秒
+
+  // 画面スリープを防止（Wake Lock API）
+  useEffect(() => {
+    const requestWakeLock = async () => {
+      try {
+        if ('wakeLock' in navigator && navigator.wakeLock) {
+          wakeLockRef.current = await navigator.wakeLock.request('screen');
+          console.log('Wake Lock: 画面スリープ防止を有効化');
+        }
+      } catch (err) {
+        console.log('Wake Lock: 取得できませんでした', err);
+      }
+    };
+
+    requestWakeLock();
+
+    // ページが再表示されたときに再取得
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        requestWakeLock();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      if (wakeLockRef.current) {
+        wakeLockRef.current.release();
+        console.log('Wake Lock: 画面スリープ防止を解除');
+      }
+    };
+  }, []);
 
   // プリロード済みの音楽を使用
   useEffect(() => {

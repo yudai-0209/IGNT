@@ -14,7 +14,7 @@ const MODEL_PATH = '/models/pushUp.glb';
 const AUDIO_PATH = '/music/Metronome_120.mp3';
 
 // ファイルサイズ（バイト）- Content-Lengthが取れない場合のフォールバック
-const ESTIMATED_MODEL_SIZE = 50 * 1024 * 1024; // 50MB
+const ESTIMATED_MODEL_SIZE = 54472 * 1024; // 54472kB
 const ESTIMATED_AUDIO_SIZE = 1.2 * 1024 * 1024; // 1.2MB
 
 const LoadingScreen = ({ onLoadComplete }: LoadingScreenProps) => {
