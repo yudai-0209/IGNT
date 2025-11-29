@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useGLTF } from '@react-three/drei';
 import './LoadingScreen.css';
 
 interface LoadingScreenProps {
@@ -73,14 +74,16 @@ const LoadingScreen = ({ onLoadComplete }: LoadingScreenProps) => {
   const loadModel = useCallback(async (): Promise<void> => {
     console.log('3Dモデルのダウンロード開始');
 
-    // ダウンロードしてブラウザキャッシュに乗せる（Blob URLは使わない）
+    // ダウンロードしてブラウザキャッシュに乗せる（プログレス表示用）
     await loadWithProgress(
       MODEL_PATH,
       ESTIMATED_MODEL_SIZE,
       (percent) => setProgress(prev => ({ ...prev, model: percent }))
     );
 
-    // モデルはキャッシュ済みフラグだけ立てる（元のパスを使う）
+    // drei内部キャッシュにもプリロード（パース処理も事前に実行）
+    useGLTF.preload(MODEL_PATH);
+
     (window as any).__modelPreloaded = true;
     console.log('3Dモデルのプリロード完了');
   }, [loadWithProgress]);
