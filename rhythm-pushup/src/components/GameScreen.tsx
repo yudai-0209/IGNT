@@ -30,13 +30,16 @@ function GameScreen({ calibrationData, onBackToStart: _onBackToStart }: GameScre
 
   const ANIMATION_DURATION = 1000; // 1秒
 
-  // 音楽を事前にプリロード（マウント時）
+  // プリロード済みの音楽を使用
   useEffect(() => {
     if (!audioRef.current) {
-      audioRef.current = new Audio('/music/Metronome_120.mp3');
+      const cachedAudioUrl = (window as any).__cachedAudioUrl;
+      audioRef.current = new Audio(cachedAudioUrl || '/music/Metronome_120.mp3');
       audioRef.current.loop = true;
       audioRef.current.volume = 1.0;
-      audioRef.current.load();
+      if (!cachedAudioUrl) {
+        audioRef.current.load();
+      }
     }
   }, []);
 
@@ -243,10 +246,10 @@ function GameScreen({ calibrationData, onBackToStart: _onBackToStart }: GameScre
           <h1 className="countdown-title">スタート！</h1>
         </div>
       )}
-      {/* 最初からモデルをロード開始、残り10秒で表示 */}
+      {/* プリロード済みのモデルを使用 */}
       <div className="model-container" style={{ visibility: countdown > 10 ? 'hidden' : 'visible' }}>
         <PushUpModel
-          modelPath="/models/pushUp.glb"
+          modelPath={(window as any).__cachedModelUrl || '/models/pushUp.glb'}
           currentFrame={isGameStarted ? currentFrame : demoFrame}
           onLoad={handleModelLoad}
         />

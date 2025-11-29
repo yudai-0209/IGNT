@@ -29,17 +29,17 @@ const AsyncGameScreen = ({ onBackToStart }: AsyncGameScreenProps) => {
   const demoStartTimeRef = useRef<number | null>(null);
   const demoAnimationFrameRef = useRef<number | null>(null);
 
-  // 音楽を事前にプリロード（マウント時）
+  // プリロード済みの音楽を使用
   useEffect(() => {
     if (!audioRef.current) {
-      audioRef.current = new Audio('/music/Metronome_120.mp3');
+      const cachedAudioUrl = (window as any).__cachedAudioUrl;
+      audioRef.current = new Audio(cachedAudioUrl || '/music/Metronome_120.mp3');
       audioRef.current.loop = true;
       audioRef.current.volume = 1.0;
-      // プリロード
-      audioRef.current.load();
+      if (!cachedAudioUrl) {
+        audioRef.current.load();
+      }
     }
-
-    // 3Dモデルも最初からロード開始（handleModelLoadで完了通知）
   }, []);
 
   // デモアニメーション（カウントダウン10秒→8秒の間に2回腕立て）
@@ -342,10 +342,10 @@ const AsyncGameScreen = ({ onBackToStart }: AsyncGameScreenProps) => {
           <p className="async-countdown-text">お疲れ様でした！</p>
         </div>
       )}
-      {/* 最初からモデルをロード開始、残り10秒で表示 */}
+      {/* プリロード済みのモデルを使用 */}
       <div className="async-model-container" style={{ visibility: countdown > 10 ? 'hidden' : 'visible' }}>
         <PushUpModel
-          modelPath="/models/pushUp.glb"
+          modelPath={(window as any).__cachedModelUrl || '/models/pushUp.glb'}
           currentFrame={isGameStarted ? currentFrame : demoFrame}
           onLoad={handleModelLoad}
         />
