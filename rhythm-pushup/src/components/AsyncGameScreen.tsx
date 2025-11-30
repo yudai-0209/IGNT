@@ -319,10 +319,12 @@ const AsyncGameScreen = ({ onBackToStart }: AsyncGameScreenProps) => {
           <button className="async-pause-button" onClick={handlePause}>
             ⏸
           </button>
-          <div className="async-rep-counter">
-            <div className="async-rep-label">残り</div>
-            {remainingReps}/30
-          </div>
+          {!showWarmUpMessage && (
+            <div className="async-rep-counter">
+              <div className="async-rep-label">残り</div>
+              {remainingReps}/30
+            </div>
+          )}
         </>
       )}
       {isGameStarted && !isGameCleared && !isPaused && showWarmUpMessage && (
