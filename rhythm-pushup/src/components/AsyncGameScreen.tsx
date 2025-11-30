@@ -19,6 +19,7 @@ const AsyncGameScreen = ({ onBackToStart }: AsyncGameScreenProps) => {
   const [circleScale, setCircleScale] = useState<number>(1.0);
   const [circleVisible, setCircleVisible] = useState<boolean>(true);
   const [remainingReps, setRemainingReps] = useState<number>(30);
+  const [audioError, setAudioError] = useState<string | null>(null);
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const animationFrameRef = useRef<number | null>(null);
@@ -122,6 +123,8 @@ const AsyncGameScreen = ({ onBackToStart }: AsyncGameScreenProps) => {
           audioRef.current.currentTime = 0;
           audioRef.current.play().catch((error) => {
             console.error('メトロノーム音楽の再生に失敗しました:', error);
+            const errorMessage = `音楽再生エラー: ${error.name} - ${error.message}`;
+            setAudioError(errorMessage);
           });
           musicStartOffsetRef.current = audioRef.current.currentTime * 1000;
         }
@@ -309,6 +312,51 @@ const AsyncGameScreen = ({ onBackToStart }: AsyncGameScreenProps) => {
         <div className="async-countdown-overlay">
           <h1 className="async-countdown-title">ゲームクリア！</h1>
           <p className="async-countdown-text">お疲れ様でした！</p>
+        </div>
+      )}
+      {audioError && (
+        <div className="async-countdown-overlay" style={{ backgroundColor: 'rgba(200, 0, 0, 0.9)' }}>
+          <h1 className="async-countdown-title" style={{ fontSize: '24px' }}>エラー発生</h1>
+          <p className="async-countdown-text" style={{ fontSize: '14px', wordBreak: 'break-all', padding: '0 20px' }}>
+            {audioError}
+          </p>
+          <button
+            onClick={() => {
+              setAudioError(null);
+              if (audioRef.current) {
+                audioRef.current.play().catch((e) => {
+                  setAudioError(`再試行失敗: ${e.name} - ${e.message}`);
+                });
+              }
+            }}
+            style={{
+              marginTop: '20px',
+              padding: '15px 30px',
+              fontSize: '18px',
+              backgroundColor: '#fff',
+              color: '#c00',
+              border: 'none',
+              borderRadius: '10px',
+              cursor: 'pointer'
+            }}
+          >
+            タップして再試行
+          </button>
+          <button
+            onClick={onBackToStart}
+            style={{
+              marginTop: '10px',
+              padding: '10px 20px',
+              fontSize: '14px',
+              backgroundColor: 'transparent',
+              color: '#fff',
+              border: '1px solid #fff',
+              borderRadius: '10px',
+              cursor: 'pointer'
+            }}
+          >
+            スタートに戻る
+          </button>
         </div>
       )}
       <div className="async-model-container">
