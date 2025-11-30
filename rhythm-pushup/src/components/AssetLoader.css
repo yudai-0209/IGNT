@@ -97,6 +97,11 @@
   background-size: 200% 100%;
 }
 
+.total-progress-bar-main {
+  background: linear-gradient(90deg, #00ffaa 0%, #00cc88 50%, #00ffaa 100%);
+  box-shadow: 0 0 15px rgba(0, 255, 170, 0.7);
+}
+
 @keyframes shimmer {
   0% {
     background-position: -200% 0;

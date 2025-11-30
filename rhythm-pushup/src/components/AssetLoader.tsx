@@ -195,11 +195,10 @@ const AssetLoader = ({ onLoadComplete, modelPath, musicPath, imagePaths }: Asset
         <div className="total-progress">
           <div className="total-progress-bar-container">
             <div
-              className="total-progress-bar"
+              className="total-progress-bar total-progress-bar-main"
               style={{ width: `${totalProgress}%` }}
             />
           </div>
-          <p className="total-progress-text">{Math.round(totalProgress)}% 完了</p>
         </div>
       </div>
     </div>
