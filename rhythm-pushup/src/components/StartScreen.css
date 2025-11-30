@@ -29,21 +29,22 @@
   text-align: center;
   color: white;
   background-color: rgba(0, 0, 0, 0.8);
-  padding: 40px 60px;
-  border-radius: 20px;
+  padding: clamp(20px, 4vh, 40px) clamp(30px, 5vw, 60px);
+  border-radius: clamp(10px, 2vw, 20px);
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.7);
+  max-width: 90%;
 }
 
 .start-title {
-  font-size: 3rem;
-  margin-bottom: 20px;
+  font-size: clamp(1.5rem, 6vw, 3rem);
+  margin-bottom: clamp(10px, 2vh, 20px);
   text-shadow: 3px 3px 6px rgba(0, 0, 0, 0.8);
   color: #00ff00;
 }
 
 .start-description {
-  font-size: 1.2rem;
-  margin-bottom: 30px;
+  font-size: clamp(0.9rem, 2.5vw, 1.2rem);
+  margin-bottom: clamp(15px, 3vh, 30px);
   line-height: 1.8;
 }
 
@@ -51,10 +52,10 @@
   background-color: #00ff00;
   color: #000;
   border: none;
-  padding: 15px 50px;
-  font-size: 1.5rem;
+  padding: clamp(10px, 1.5vh, 15px) clamp(30px, 6vw, 50px);
+  font-size: clamp(1rem, 3vw, 1.5rem);
   font-weight: bold;
-  border-radius: 10px;
+  border-radius: clamp(5px, 1vw, 10px);
   cursor: pointer;
   transition: all 0.3s;
   box-shadow: 0 5px 15px rgba(0, 255, 0, 0.5);
