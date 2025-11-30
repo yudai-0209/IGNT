@@ -4,6 +4,21 @@ import PushUpModel from './PushUpModel';
 import AssetLoader from './AssetLoader';
 import { useWakeLock } from '../hooks/useWakeLock';
 
+// イージング関数
+const easeInCubic = (t: number): number => t * t * t;
+const easeOutCubic = (t: number): number => 1 - Math.pow(1 - t, 3);
+const easeOutBack = (t: number): number => {
+  const c1 = 1.70158;
+  const c3 = c1 + 1;
+  return 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2);
+};
+const easeOutBounce = (t: number): number => {
+  if (t < 0.5) {
+    return 1 - Math.cos(t * Math.PI * 4) * (1 - t * 2) * 0.15;
+  }
+  return 1;
+};
+
 interface AsyncGameScreenProps {
   onBackToStart: () => void;
 }
@@ -18,6 +33,9 @@ const AsyncGameScreen = ({ onBackToStart }: AsyncGameScreenProps) => {
   const [isPaused, setIsPaused] = useState<boolean>(false);
   const [currentFrame, setCurrentFrame] = useState<number>(25);
   const [circleScale, setCircleScale] = useState<number>(1.0);
+  const [circleRotation, setCircleRotation] = useState<number>(0);
+  const [circleOpacity, setCircleOpacity] = useState<number>(1.0);
+  const [circleBlur, setCircleBlur] = useState<number>(0);
   const [circleVisible, setCircleVisible] = useState<boolean>(true);
   const [remainingReps, setRemainingReps] = useState<number>(30);
   const [showWarmUpMessage, setShowWarmUpMessage] = useState<boolean>(true);
@@ -171,20 +189,52 @@ const AsyncGameScreen = ({ onBackToStart }: AsyncGameScreenProps) => {
 
       const cycleTime = musicTime % 2000;
 
-      if (cycleTime < 500) {
-        // 1拍目 (0-500ms): 下降（0.5秒）
-        const progress = cycleTime / 500; // 0→1
+      if (cycleTime < 100) {
+        // 予備動作 (0-100ms): 縮む前に一瞬膨らむ（アンティシペーション）
+        const progress = cycleTime / 100;
+        const frame = 25;
+        setCurrentFrame(frame);
+        // 1.0 → 1.15 に膨らむ
+        const scale = 1.0 + (0.15 * easeOutCubic(progress));
+        setCircleScale(scale);
+        setCircleRotation(0);
+        setCircleOpacity(1.0);
+        setCircleBlur(0);
+        setCircleVisible(true);
+        isGoingDownRef.current = true;
+      } else if (cycleTime < 500) {
+        // 1拍目 (100-500ms): 下降 - ググッと縮む + 回転 + ブラー
+        const progress = (cycleTime - 100) / 400; // 0→1
         const frame = 25 + (25 * progress); // 25→50
         setCurrentFrame(Math.round(frame));
-        const scale = 1.0 - (0.6 * progress); // 1.0→0.4
+        // ease-in-cubic: ゆっくり始まり、最後に加速（ググッと感）
+        const easedProgress = easeInCubic(progress);
+        const scale = 1.15 - (0.75 * easedProgress); // 1.15→0.4
         setCircleScale(scale);
+        // 回転: 0度 → -180度（半回転）
+        setCircleRotation(-180 * easedProgress);
+        // 不透明度: 通常
+        setCircleOpacity(1.0);
+        // ブラー: 縮む速度に応じてブラー（最大5px）
+        const speed = easedProgress > 0.5 ? (easedProgress - 0.5) * 2 : 0;
+        setCircleBlur(speed * 5);
         setCircleVisible(true);
 
         isGoingDownRef.current = true;
       } else if (cycleTime < 1000) {
-        // 2拍目 (500-1000ms): 静止（最下点）
+        // 2拍目 (500-1000ms): 静止（最下点）- 跳ね返り + 光る
         setCurrentFrame(50);
-        setCircleScale(0.4);
+        // 最初の150msでオーバーシュート（0.35まで縮んで0.4に戻る）
+        const bounceProgress = Math.min((cycleTime - 500) / 150, 1);
+        const bounceScale = 0.35 + (0.05 * easeOutBounce(bounceProgress));
+        setCircleScale(bounceScale);
+        // 回転: -180度で維持
+        setCircleRotation(-180);
+        // 不透明度: 最小点で明るく光る（1.0 → 1.3 → 1.0）
+        const glowProgress = Math.min((cycleTime - 500) / 200, 1);
+        setCircleOpacity(1.0 + 0.3 * Math.sin(glowProgress * Math.PI));
+        // ブラー解除
+        setCircleBlur(0);
         setCircleVisible(true);
 
         // 1拍目（下降）から2拍目（静止）に入った瞬間にカウント
@@ -197,19 +247,37 @@ const AsyncGameScreen = ({ onBackToStart }: AsyncGameScreenProps) => {
           }
         }
       } else if (cycleTime < 1500) {
-        // 3拍目 (1000-1500ms): 上昇（0.5秒）
+        // 3拍目 (1000-1500ms): 上昇（0.5秒）- ポンッと膨らむ + 続けて回転
         const progress = (cycleTime - 1000) / 500; // 0→1
         const frame = 50 - (25 * progress); // 50→25
         setCurrentFrame(Math.round(frame));
-        const scale = 0.4 + (0.6 * progress); // 0.4→1.0
-        setCircleScale(scale);
+        // ease-out-back: パッと広がり、少しオーバーシュート（1.15まで）
+        const easedProgress = easeOutBack(progress);
+        const scale = 0.4 + (0.75 * easedProgress); // 0.4→1.15
+        setCircleScale(Math.min(scale, 1.15));
+        // 回転: -180度 → -360度（続けて回転）
+        setCircleRotation(-180 - (180 * easeOutCubic(progress)));
+        // 不透明度: 通常
+        setCircleOpacity(1.0);
+        // ブラー: 膨らむ初期にブラー
+        const blurAmount = progress < 0.3 ? (0.3 - progress) * 8 : 0;
+        setCircleBlur(blurAmount);
         setCircleVisible(true);
 
         isGoingDownRef.current = false;
       } else {
-        // 4拍目 (1500-2000ms): 静止（最上点）
+        // 4拍目 (1500-2000ms): 静止（最上点）- ふわっと安定
         setCurrentFrame(25);
-        setCircleScale(1.0);
+        // 最初の300msで1.15から1.0に落ち着く
+        const settleProgress = Math.min((cycleTime - 1500) / 300, 1);
+        const settleScale = 1.15 - (0.15 * easeOutCubic(settleProgress));
+        setCircleScale(settleScale);
+        // 回転: -360度（=0度）で維持、次のサイクルで0度にリセット
+        setCircleRotation(-360);
+        // 不透明度: 通常
+        setCircleOpacity(1.0);
+        // ブラー解除
+        setCircleBlur(0);
         setCircleVisible(true);
 
         isGoingDownRef.current = false;
@@ -287,8 +355,9 @@ const AsyncGameScreen = ({ onBackToStart }: AsyncGameScreenProps) => {
         alt="Circle"
         className="async-circle-center"
         style={{
-          transform: `translate(-50%, -50%) scale(${circleScale})`,
-          opacity: circleVisible && isModelReady ? 1 : 0,
+          transform: `translate(-50%, -50%) scale(${circleScale}) rotate(${circleRotation}deg)`,
+          opacity: circleVisible && isModelReady ? circleOpacity : 0,
+          filter: circleBlur > 0 ? `blur(${circleBlur}px)` : 'none',
           transition: 'opacity 0.1s ease'
         }}
       />
