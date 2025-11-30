@@ -27,6 +27,9 @@ const AssetLoader = ({ onLoadComplete, modelPath, musicPath, imagePaths }: Asset
     dracoLoader.setDecoderPath('https://www.gstatic.com/draco/versioned/decoders/1.5.6/');
     loader.setDRACOLoader(dracoLoader);
 
+    // DRACOLoaderをグローバルに保持（disposeするとテクスチャのBlob URLが無効化される）
+    (window as any).__dracoLoader = dracoLoader;
+
     loader.load(
       modelPath,
       // onLoad
@@ -53,9 +56,7 @@ const AssetLoader = ({ onLoadComplete, modelPath, musicPath, imagePaths }: Asset
       }
     );
 
-    return () => {
-      dracoLoader.dispose();
-    };
+    // クリーンアップではdisposeしない（テクスチャが無効化されるため）
   }, [modelPath]);
 
   // 音楽のロード

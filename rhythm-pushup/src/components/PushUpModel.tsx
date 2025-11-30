@@ -52,6 +52,7 @@ const Model = ({ url, currentFrame, onLoad }: { url: string; currentFrame: numbe
   const materialsProcessedRef = React.useRef(false);
   const onLoadCalledRef = React.useRef(false);
   const onLoadRef = React.useRef(onLoad);
+  const [textureLoaded, setTextureLoaded] = React.useState(false);
 
   // onLoadの参照を更新
   React.useEffect(() => {
@@ -68,47 +69,69 @@ const Model = ({ url, currentFrame, onLoad }: { url: string; currentFrame: numbe
     console.log('Available animations:', names);
     console.log('Animation count:', names?.length || 0);
 
-    // マテリアルのテクスチャエンコーディングを修正
-    scene.traverse((child) => {
-      if ('material' in child) {
-        const mesh = child as THREE.Mesh;
-        console.log('Mesh name:', mesh.name);
+    // Ch38_bodyテクスチャを外部ファイルから読み込む
+    const textureLoader = new THREE.TextureLoader();
+    textureLoader.load('/textures/Ch38_body.png', (bodyTexture) => {
+      console.log('Ch38_body texture loaded successfully');
+      bodyTexture.colorSpace = THREE.SRGBColorSpace;
+      bodyTexture.flipY = false; // GLTFはflipY=falseが標準
+      bodyTexture.needsUpdate = true;
 
-        const processMaterial = (mat: THREE.Material) => {
-          console.log('Material:', {
-            name: mat.name,
-            type: mat.type,
-            color: 'color' in mat ? mat.color : undefined,
-            map: 'map' in mat ? mat.map : undefined,
-          });
+      // マテリアルのテクスチャエンコーディングを修正
+      scene.traverse((child) => {
+        if ('material' in child) {
+          const mesh = child as THREE.Mesh;
+          console.log('Mesh name:', mesh.name);
 
-          // すべてのテクスチャタイプのカラースペース設定
-          const textureProperties = ['map', 'emissiveMap', 'normalMap', 'roughnessMap', 'metalnessMap', 'aoMap'];
-          textureProperties.forEach((prop) => {
-            if (prop in mat && (mat as any)[prop]) {
-              const texture = (mat as any)[prop] as THREE.Texture;
-              texture.colorSpace = prop === 'map' || prop === 'emissiveMap' ? THREE.SRGBColorSpace : THREE.NoColorSpace;
-              texture.needsUpdate = true;
+          const processMaterial = (mat: THREE.Material) => {
+            console.log('Material:', {
+              name: mat.name,
+              type: mat.type,
+              color: 'color' in mat ? mat.color : undefined,
+              map: 'map' in mat ? mat.map : undefined,
+            });
+
+            // MeshStandardMaterial/MeshPhysicalMaterialの場合
+            if (mat.type === 'MeshStandardMaterial' || mat.type === 'MeshPhysicalMaterial') {
+              const standardMat = mat as THREE.MeshStandardMaterial;
+
+              // Ch38_bodyマテリアルにテクスチャを手動で適用
+              if (mat.name === 'Ch38_body') {
+                console.log('Applying external texture to Ch38_body');
+                standardMat.map = bodyTexture;
+                standardMat.color = new THREE.Color(0xffffff); // テクスチャの色をそのまま使う
+                standardMat.needsUpdate = true;
+              }
+
+              // すべてのテクスチャタイプのカラースペース設定
+              const textureProperties = ['map', 'emissiveMap', 'normalMap', 'roughnessMap', 'metalnessMap', 'aoMap'];
+              textureProperties.forEach((prop) => {
+                if ((standardMat as any)[prop]) {
+                  const texture = (standardMat as any)[prop] as THREE.Texture;
+                  texture.colorSpace = prop === 'map' || prop === 'emissiveMap' ? THREE.SRGBColorSpace : THREE.NoColorSpace;
+                  texture.needsUpdate = true;
+                }
+              });
+
+              standardMat.envMapIntensity = 1.0;
+              standardMat.needsUpdate = true;
             }
-          });
 
-          // マテリアルを強制的に更新
-          mat.needsUpdate = true;
+            // マテリアルを強制的に更新
+            mat.needsUpdate = true;
+          };
 
-          // MeshStandardMaterialの場合、追加の設定
-          if (mat.type === 'MeshStandardMaterial' || mat.type === 'MeshPhysicalMaterial') {
-            const standardMat = mat as THREE.MeshStandardMaterial;
-            standardMat.envMapIntensity = 1.0;
-            standardMat.needsUpdate = true;
+          if (Array.isArray(mesh.material)) {
+            mesh.material.forEach(processMaterial);
+          } else {
+            processMaterial(mesh.material);
           }
-        };
-
-        if (Array.isArray(mesh.material)) {
-          mesh.material.forEach(processMaterial);
-        } else {
-          processMaterial(mesh.material);
         }
-      }
+      });
+
+      // テクスチャ読み込み完了
+      setTextureLoaded(true);
+      console.log('Texture applied, model ready');
     });
 
     // GLBファイルに複数のモデルが含まれている場合、最初の1つだけを表示
@@ -124,9 +147,10 @@ const Model = ({ url, currentFrame, onLoad }: { url: string; currentFrame: numbe
     materialsProcessedRef.current = true;
   }, [gltf, scene, names]);
 
-  // アニメーション準備
+  // アニメーション準備（テクスチャ読み込み完了後）
   React.useEffect(() => {
     if (!gltf || !scene) return;
+    if (!textureLoaded) return; // テクスチャ読み込み完了を待つ
     if (onLoadCalledRef.current) return;
 
     if (names && names.length > 0) {
@@ -142,13 +166,13 @@ const Model = ({ url, currentFrame, onLoad }: { url: string; currentFrame: numbe
 
     setIsModelReady(true);
 
-    // onLoadは一度だけ呼ぶ
+    // onLoadは一度だけ呼ぶ（テクスチャ適用後）
     if (onLoadRef.current && !onLoadCalledRef.current) {
       onLoadCalledRef.current = true;
-      console.log('onLoad callback called');
+      console.log('onLoad callback called (texture loaded)');
       onLoadRef.current();
     }
-  }, [gltf, scene, actions, names]);
+  }, [gltf, scene, actions, names, textureLoaded]);
 
   // フレーム番号に基づいてアニメーション時間を制御
   React.useEffect(() => {
