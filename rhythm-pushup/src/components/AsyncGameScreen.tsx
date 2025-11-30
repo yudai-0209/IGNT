@@ -33,15 +33,24 @@ const AsyncGameScreen = ({ onBackToStart }: AsyncGameScreenProps) => {
 
   // アセットローディング完了時（ファイルダウンロード完了）
   const handleLoadComplete = () => {
-    // プリロードされた音楽URLを使用
-    const preloadedUrl = (window as any).__preloadedMusicUrl;
-    if (preloadedUrl) {
-      audioRef.current = new Audio(preloadedUrl);
+    // アンロック済みの音声があればそれを優先使用
+    const unlockedAudio = (window as any).__unlockedAudio;
+    if (unlockedAudio) {
+      console.log('アンロック済み音声を使用');
+      audioRef.current = unlockedAudio;
     } else {
-      audioRef.current = new Audio('/music/Metronome_120.mp3');
+      // プリロードされた音楽URLを使用
+      const preloadedUrl = (window as any).__preloadedMusicUrl;
+      if (preloadedUrl) {
+        audioRef.current = new Audio(preloadedUrl);
+      } else {
+        audioRef.current = new Audio('/music/Metronome_120.mp3');
+      }
     }
-    audioRef.current.loop = true;
-    audioRef.current.volume = 1.0;
+    if (audioRef.current) {
+      audioRef.current.loop = true;
+      audioRef.current.volume = 1.0;
+    }
 
     // ファイルダウンロード完了、次は3Dモデルのシーン構築を待つ
     setIsLoading(false);
