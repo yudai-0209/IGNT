@@ -3,6 +3,7 @@ import './GameScreen.css';
 import PushUpModel from './PushUpModel';
 import PoseDetection from './PoseDetection';
 import AssetLoader from './AssetLoader';
+import { useWakeLock } from '../hooks/useWakeLock';
 import type { CalibrationData } from '../types';
 
 interface GameScreenProps {
@@ -28,6 +29,9 @@ function GameScreen({ calibrationData, onBackToStart: _onBackToStart }: GameScre
   const interpolationFrameRef = useRef<number | null>(null);
 
   const ANIMATION_DURATION = 1000; // 1秒
+
+  // ゲーム中は画面スリープを防止
+  useWakeLock(isGameStarted);
 
   // ローディング完了時
   const handleLoadComplete = () => {

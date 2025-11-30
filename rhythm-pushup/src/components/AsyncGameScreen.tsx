@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import './AsyncGameScreen.css';
 import PushUpModel from './PushUpModel';
 import AssetLoader from './AssetLoader';
+import { useWakeLock } from '../hooks/useWakeLock';
 
 interface AsyncGameScreenProps {
   onBackToStart: () => void;
@@ -19,6 +20,7 @@ const AsyncGameScreen = ({ onBackToStart }: AsyncGameScreenProps) => {
   const [circleScale, setCircleScale] = useState<number>(1.0);
   const [circleVisible, setCircleVisible] = useState<boolean>(true);
   const [remainingReps, setRemainingReps] = useState<number>(30);
+  const [showWarmUpMessage, setShowWarmUpMessage] = useState<boolean>(true);
   const [audioError, setAudioError] = useState<string | null>(null);
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -30,6 +32,9 @@ const AsyncGameScreen = ({ onBackToStart }: AsyncGameScreenProps) => {
   const repCountRef = useRef<number>(0);
   const countdownStartTimeRef = useRef<number | null>(null);
   const musicStartOffsetRef = useRef<number>(0);
+
+  // ゲーム中は画面スリープを防止
+  useWakeLock(isGameStarted && !isPaused && !isGameCleared);
 
   // アセットローディング完了時（ファイルダウンロード完了）
   const handleLoadComplete = () => {
@@ -124,7 +129,7 @@ const AsyncGameScreen = ({ onBackToStart }: AsyncGameScreenProps) => {
   useEffect(() => {
     if (!isGameStarted) return;
 
-    const GAME_DURATION = 60000; // 1分 = 60000ms
+    const GAME_DURATION = 64000; // 64秒 = 64000ms
 
     const animate = (timestamp: number) => {
       if (isPaused) {
@@ -147,6 +152,11 @@ const AsyncGameScreen = ({ onBackToStart }: AsyncGameScreenProps) => {
       }
 
       const musicTime = audioRef.current ? (audioRef.current.currentTime * 1000) - musicStartOffsetRef.current : 0;
+
+      // 3秒経過したらウォームアップメッセージを非表示
+      if (musicTime >= 3000 && showWarmUpMessage) {
+        setShowWarmUpMessage(false);
+      }
 
       if (musicTime >= GAME_DURATION) {
         setIsGameCleared(true);
@@ -178,10 +188,13 @@ const AsyncGameScreen = ({ onBackToStart }: AsyncGameScreenProps) => {
         setCircleVisible(true);
 
         // 1拍目（下降）から2拍目（静止）に入った瞬間にカウント
+        // 最初の4秒（2回分）はカウントしない
         if (isGoingDownRef.current) {
           isGoingDownRef.current = false;
-          repCountRef.current += 1;
-          setRemainingReps(30 - repCountRef.current);
+          if (musicTime >= 4000) {
+            repCountRef.current += 1;
+            setRemainingReps(30 - repCountRef.current);
+          }
         }
       } else if (cycleTime < 1500) {
         // 3拍目 (1000-1500ms): 上昇（0.5秒）
@@ -212,7 +225,7 @@ const AsyncGameScreen = ({ onBackToStart }: AsyncGameScreenProps) => {
         cancelAnimationFrame(animationFrameRef.current);
       }
     };
-  }, [isGameStarted, isPaused, onBackToStart]);
+  }, [isGameStarted, isPaused, onBackToStart, showWarmUpMessage]);
 
   // クリーンアップ
   useEffect(() => {
@@ -307,9 +320,15 @@ const AsyncGameScreen = ({ onBackToStart }: AsyncGameScreenProps) => {
             ⏸
           </button>
           <div className="async-rep-counter">
+            <div className="async-rep-label">残り</div>
             {remainingReps}/30
           </div>
         </>
+      )}
+      {isGameStarted && !isGameCleared && !isPaused && showWarmUpMessage && (
+        <div className="async-countdown-overlay" style={{ background: 'rgba(0, 0, 0, 0.6)' }}>
+          <h1 className="async-countdown-title">リズムに合わせて腕立てしよう！</h1>
+        </div>
       )}
       {isPaused && (
         <div className="async-countdown-overlay">

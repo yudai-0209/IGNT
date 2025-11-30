@@ -1,9 +1,21 @@
 import './ModeSelectScreen.css';
+import NoSleep from 'nosleep.js';
 
 interface ModeSelectScreenProps {
   onSelectSync: () => void;
   onSelectAsync: () => void;
 }
+
+// NoSleep インスタンスをグローバルに保持
+const noSleep = new NoSleep();
+
+// 画面スリープ防止を有効化（ユーザーインタラクション時に呼び出す）
+const enableNoSleep = () => {
+  noSleep.enable();
+  // グローバルに保存して他のコンポーネントからアクセス可能に
+  (window as any).__noSleep = noSleep;
+  console.log('NoSleep 有効化 - 画面スリープを防止');
+};
 
 // 音声をアンロックする関数（ユーザーインタラクション時に呼び出す）
 const unlockAudio = () => {
@@ -29,11 +41,13 @@ const unlockAudio = () => {
 
 const ModeSelectScreen = ({ onSelectSync, onSelectAsync }: ModeSelectScreenProps) => {
   const handleSyncClick = () => {
+    enableNoSleep();
     unlockAudio();
     onSelectSync();
   };
 
   const handleAsyncClick = () => {
+    enableNoSleep();
     unlockAudio();
     onSelectAsync();
   };

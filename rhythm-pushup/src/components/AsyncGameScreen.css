@@ -90,6 +90,13 @@
   background: rgba(0, 0, 0, 0.5);
   padding: clamp(5px, 1vh, 10px) clamp(10px, 2vw, 20px);
   border-radius: clamp(5px, 1vw, 10px);
+  text-align: center;
+}
+
+.async-rep-label {
+  font-size: clamp(12px, 3vw, 20px);
+  font-weight: normal;
+  margin-bottom: clamp(2px, 0.5vh, 5px);
 }
 
 .async-pause-button {
