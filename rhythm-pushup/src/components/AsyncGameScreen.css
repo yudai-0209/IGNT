@@ -30,6 +30,25 @@
   height: auto;
 }
 
+.async-burst-effect {
+  position: absolute;
+  top: 66%;
+  left: 52.5%;
+  width: 120vmin;
+  height: 120vmin;
+  transform: translate(-50%, -50%);
+  z-index: 2;
+  pointer-events: none;
+  background: repeating-conic-gradient(
+    from 0deg,
+    transparent 0deg 12deg,
+    rgba(255, 100, 200, 0.7) 12deg 15deg
+  );
+  border-radius: 50%;
+  mask-image: radial-gradient(circle, transparent 20%, black 25%, black 70%, transparent 75%);
+  -webkit-mask-image: radial-gradient(circle, transparent 20%, black 25%, black 70%, transparent 75%);
+}
+
 .async-model-container {
   position: absolute;
   width: 160%;
@@ -39,7 +58,7 @@
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  z-index: 1;
+  z-index: 3;
   transition: opacity 0.5s ease;
 }
 

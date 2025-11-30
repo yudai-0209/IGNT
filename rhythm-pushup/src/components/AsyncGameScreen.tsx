@@ -37,6 +37,8 @@ const AsyncGameScreen = ({ onBackToStart }: AsyncGameScreenProps) => {
   const [circleOpacity, setCircleOpacity] = useState<number>(1.0);
   const [circleBlur, setCircleBlur] = useState<number>(0);
   const [circleVisible, setCircleVisible] = useState<boolean>(true);
+  const [burstScale, setBurstScale] = useState<number>(0);
+  const [burstOpacity, setBurstOpacity] = useState<number>(0);
   const [remainingReps, setRemainingReps] = useState<number>(30);
   const [showWarmUpMessage, setShowWarmUpMessage] = useState<boolean>(true);
   const [audioError, setAudioError] = useState<string | null>(null);
@@ -201,6 +203,9 @@ const AsyncGameScreen = ({ onBackToStart }: AsyncGameScreenProps) => {
         setCircleOpacity(1.0);
         setCircleBlur(0);
         setCircleVisible(true);
+        // 放射線: 非表示
+        setBurstScale(0);
+        setBurstOpacity(0);
         isGoingDownRef.current = true;
       } else if (cycleTime < 500) {
         // 1拍目 (100-500ms): 下降 - ググッと縮む + 回転 + ブラー
@@ -219,10 +224,13 @@ const AsyncGameScreen = ({ onBackToStart }: AsyncGameScreenProps) => {
         const speed = easedProgress > 0.5 ? (easedProgress - 0.5) * 2 : 0;
         setCircleBlur(speed * 5);
         setCircleVisible(true);
+        // 放射線: 非表示
+        setBurstScale(0);
+        setBurstOpacity(0);
 
         isGoingDownRef.current = true;
       } else if (cycleTime < 1000) {
-        // 2拍目 (500-1000ms): 静止（最下点）- 跳ね返り + 光る
+        // 2拍目 (500-1000ms): 静止（最下点）- 跳ね返り + 光る + 放射線
         setCurrentFrame(50);
         // 最初の150msでオーバーシュート（0.35まで縮んで0.4に戻る）
         const bounceProgress = Math.min((cycleTime - 500) / 150, 1);
@@ -236,6 +244,12 @@ const AsyncGameScreen = ({ onBackToStart }: AsyncGameScreenProps) => {
         // ブラー解除
         setCircleBlur(0);
         setCircleVisible(true);
+
+        // 放射線エフェクト: 500msで発動、500ms間で拡大しながらフェードアウト
+        const burstProgress = Math.min((cycleTime - 500) / 500, 1);
+        const burstEased = easeOutCubic(burstProgress);
+        setBurstScale(0.5 + burstEased * 1.0); // 0.5 → 1.5
+        setBurstOpacity(0.8 * (1 - burstEased)); // 0.8 → 0
 
         // 1拍目（下降）から2拍目（静止）に入った瞬間にカウント
         // 最初の4秒（2回分）はカウントしない
@@ -263,6 +277,9 @@ const AsyncGameScreen = ({ onBackToStart }: AsyncGameScreenProps) => {
         const blurAmount = progress < 0.3 ? (0.3 - progress) * 8 : 0;
         setCircleBlur(blurAmount);
         setCircleVisible(true);
+        // 放射線: 非表示
+        setBurstScale(0);
+        setBurstOpacity(0);
 
         isGoingDownRef.current = false;
       } else {
@@ -279,6 +296,9 @@ const AsyncGameScreen = ({ onBackToStart }: AsyncGameScreenProps) => {
         // ブラー解除
         setCircleBlur(0);
         setCircleVisible(true);
+        // 放射線: 非表示
+        setBurstScale(0);
+        setBurstOpacity(0);
 
         isGoingDownRef.current = false;
       }
@@ -349,6 +369,14 @@ const AsyncGameScreen = ({ onBackToStart }: AsyncGameScreenProps) => {
         src="/image/pushup_background.jpg"
         alt="Background"
         className="async-game-background"
+      />
+      {/* 放射線エフェクト（circleの後ろ） */}
+      <div
+        className="async-burst-effect"
+        style={{
+          transform: `translate(-50%, -50%) scale(${burstScale})`,
+          opacity: burstOpacity
+        }}
       />
       <img
         src="/image/circle.png"
