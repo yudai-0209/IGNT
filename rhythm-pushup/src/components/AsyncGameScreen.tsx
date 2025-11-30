@@ -54,8 +54,8 @@ const AsyncGameScreen = ({ onBackToStart }: AsyncGameScreenProps) => {
   const countdownStartTimeRef = useRef<number | null>(null);
   const musicStartOffsetRef = useRef<number>(0);
 
-  // ゲーム中は画面スリープを防止
-  useWakeLock(isGameStarted && !isPaused && !isGameCleared);
+  // 画面スリープを防止（ゲーム画面にいる間は常に有効）
+  useWakeLock(true);
 
   // アセットローディング完了時（ファイルダウンロード完了）
   const handleLoadComplete = () => {

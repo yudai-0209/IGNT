@@ -28,19 +28,9 @@ export const useWakeLock = (enabled: boolean) => {
   }, [getNoSleep]);
 
   useEffect(() => {
-    // enabled が false になったら無効化
-    if (!enabled) {
-      disableNoSleep();
-    }
-
-    // クリーンアップ時（画面遷移時など）
-    return () => {
-      // ゲーム終了時は無効化
-      if (!enabled) {
-        disableNoSleep();
-      }
-    };
-  }, [enabled, disableNoSleep]);
+    // enabledがtrueの間は何もしない（ModeSelectScreenで有効化済み）
+    // アプリを使用中は常にNoSleepを維持する
+  }, [enabled]);
 
   // タブが再表示された時に再有効化
   useEffect(() => {
