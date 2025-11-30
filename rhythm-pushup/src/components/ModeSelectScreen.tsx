@@ -9,16 +9,22 @@ interface ModeSelectScreenProps {
 const unlockAudio = () => {
   // 音声を作成して一瞬再生→即停止でアンロック
   const audio = new Audio('/music/Metronome_120.mp3');
-  audio.volume = 0.01; // ほぼ無音
-  audio.play().then(() => {
-    audio.pause();
-    audio.currentTime = 0;
-    // アンロック済みの音声をグローバルに保存
-    (window as any).__unlockedAudio = audio;
-    console.log('音声アンロック成功');
-  }).catch((e) => {
-    console.error('音声アンロック失敗:', e);
-  });
+  audio.volume = 0; // 完全無音のまま維持
+
+  const playPromise = audio.play();
+
+  if (playPromise !== undefined) {
+    playPromise.then(() => {
+      // Promiseが解決してから停止（確実に再生が開始された後）
+      audio.pause();
+      audio.currentTime = 0;
+      // 音量は0のまま、AsyncGameScreen側で設定する
+      (window as any).__unlockedAudio = audio;
+      console.log('音声アンロック成功');
+    }).catch((e) => {
+      console.error('音声アンロック失敗:', e);
+    });
+  }
 };
 
 const ModeSelectScreen = ({ onSelectSync, onSelectAsync }: ModeSelectScreenProps) => {
