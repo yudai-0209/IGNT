@@ -1,19 +1,66 @@
 /// <reference types="@react-three/fiber" />
 import * as React from 'react';
 import { Canvas } from '@react-three/fiber';
-import { useGLTF, useAnimations, Environment } from '@react-three/drei';
+import { useAnimations, Environment } from '@react-three/drei';
 import type { Group } from 'three';
 import * as THREE from 'three';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js';
+import type { GLTF } from 'three/examples/jsm/loaders/GLTFLoader.js';
+
+// プリロードされたGLTFを使用、なければ自前でロード
+const usePreloadedGLTF = (url: string): GLTF | null => {
+  const [gltf, setGltf] = React.useState<GLTF | null>(() => {
+    // 初期値としてプリロードされたGLTFをチェック
+    const preloaded = (window as any).__preloadedGLTF;
+    return preloaded || null;
+  });
+
+  React.useEffect(() => {
+    // プリロードされたものがあればそれを使用
+    const preloaded = (window as any).__preloadedGLTF;
+    if (preloaded) {
+      setGltf(preloaded);
+      return;
+    }
+
+    // なければ自前でロード
+    const loader = new GLTFLoader();
+    const dracoLoader = new DRACOLoader();
+    dracoLoader.setDecoderPath('https://www.gstatic.com/draco/versioned/decoders/1.5.6/');
+    loader.setDRACOLoader(dracoLoader);
+
+    loader.load(url, (loadedGltf) => {
+      setGltf(loadedGltf);
+    });
+
+    return () => {
+      dracoLoader.dispose();
+    };
+  }, [url]);
+
+  return gltf;
+};
 
 const Model = ({ url, currentFrame, onLoad }: { url: string; currentFrame: number; onLoad?: () => void }) => {
   const modelRef = React.useRef<Group>(null!);
   const [isModelReady, setIsModelReady] = React.useState(false);
-  const { scene, animations } = useGLTF(url, true); // useDraco = true
+  const gltf = usePreloadedGLTF(url);
+  const scene = gltf?.scene;
+  const animations = gltf?.animations || [];
   const { actions, names } = useAnimations(animations, modelRef);
   const materialsProcessedRef = React.useRef(false);
+  const onLoadCalledRef = React.useRef(false);
+  const onLoadRef = React.useRef(onLoad);
+
+  // onLoadの参照を更新
+  React.useEffect(() => {
+    onLoadRef.current = onLoad;
+  }, [onLoad]);
 
   // マテリアル処理は一度だけ実行（sceneオブジェクトに直接適用）
   React.useEffect(() => {
+    if (!gltf || !scene) return;
     if (materialsProcessedRef.current) return;
 
     console.log('Scene children:', scene.children);
@@ -75,10 +122,13 @@ const Model = ({ url, currentFrame, onLoad }: { url: string; currentFrame: numbe
     }
 
     materialsProcessedRef.current = true;
-  }, [scene, names]);
+  }, [gltf, scene, names]);
 
   // アニメーション準備
   React.useEffect(() => {
+    if (!gltf || !scene) return;
+    if (onLoadCalledRef.current) return;
+
     if (names && names.length > 0) {
       const action = actions[names[0]];
       if (action) {
@@ -91,13 +141,18 @@ const Model = ({ url, currentFrame, onLoad }: { url: string; currentFrame: numbe
     }
 
     setIsModelReady(true);
-    if (onLoad) {
-      onLoad();
+
+    // onLoadは一度だけ呼ぶ
+    if (onLoadRef.current && !onLoadCalledRef.current) {
+      onLoadCalledRef.current = true;
+      console.log('onLoad callback called');
+      onLoadRef.current();
     }
-  }, [onLoad, actions, names]);
+  }, [gltf, scene, actions, names]);
 
   // フレーム番号に基づいてアニメーション時間を制御
   React.useEffect(() => {
+    if (!gltf || !scene) return;
     if (names && names.length > 0) {
       const action = actions[names[0]];
       if (action) {
@@ -110,7 +165,12 @@ const Model = ({ url, currentFrame, onLoad }: { url: string; currentFrame: numbe
         action.paused = true; // 一時停止状態を維持
       }
     }
-  }, [currentFrame, actions, names]);
+  }, [gltf, scene, currentFrame, actions, names]);
+
+  // GLTFがまだロードされていない場合は何も表示しない
+  if (!gltf || !scene) {
+    return null;
+  }
 
   return (
     <primitive

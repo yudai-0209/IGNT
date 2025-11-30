@@ -9,6 +9,7 @@ interface AsyncGameScreenProps {
 
 const AsyncGameScreen = ({ onBackToStart }: AsyncGameScreenProps) => {
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isModelReady, setIsModelReady] = useState<boolean>(false);
   const [showReady, setShowReady] = useState<boolean>(false);
   const [countdown, setCountdown] = useState<number>(5);
   const [isGameStarted, setIsGameStarted] = useState<boolean>(false);
@@ -29,7 +30,7 @@ const AsyncGameScreen = ({ onBackToStart }: AsyncGameScreenProps) => {
   const countdownStartTimeRef = useRef<number | null>(null);
   const musicStartOffsetRef = useRef<number>(0);
 
-  // ローディング完了時
+  // アセットローディング完了時（ファイルダウンロード完了）
   const handleLoadComplete = () => {
     // プリロードされた音楽URLを使用
     const preloadedUrl = (window as any).__preloadedMusicUrl;
@@ -41,7 +42,14 @@ const AsyncGameScreen = ({ onBackToStart }: AsyncGameScreenProps) => {
     audioRef.current.loop = true;
     audioRef.current.volume = 1.0;
 
+    // ファイルダウンロード完了、次は3Dモデルのシーン構築を待つ
     setIsLoading(false);
+  };
+
+  // 3Dモデル準備完了時（シーン構築完了）
+  const handleModelReady = () => {
+    console.log('3Dモデルのシーン構築完了');
+    setIsModelReady(true);
     setShowReady(true);
 
     // 1秒後に「準備完了！」を消してカウントダウン開始
@@ -53,7 +61,7 @@ const AsyncGameScreen = ({ onBackToStart }: AsyncGameScreenProps) => {
 
   // カウントダウン処理（5秒）
   useEffect(() => {
-    if (isLoading || showReady) return;
+    if (isLoading || !isModelReady || showReady) return;
 
     let frameId: number;
 
@@ -81,7 +89,7 @@ const AsyncGameScreen = ({ onBackToStart }: AsyncGameScreenProps) => {
         cancelAnimationFrame(frameId);
       }
     };
-  }, [countdown, isLoading, showReady]);
+  }, [countdown, isLoading, isModelReady, showReady]);
 
   // 一時停止処理
   useEffect(() => {
@@ -248,23 +256,28 @@ const AsyncGameScreen = ({ onBackToStart }: AsyncGameScreenProps) => {
         className="async-circle-center"
         style={{
           transform: `translate(-50%, -50%) scale(${circleScale})`,
-          opacity: circleVisible ? 1 : 0,
+          opacity: circleVisible && isModelReady ? 1 : 0,
           transition: 'opacity 0.1s ease'
         }}
       />
-      {showReady && (
+      {!isModelReady && (
+        <div className="async-countdown-overlay">
+          <h1 className="async-countdown-title">3Dモデル準備中...</h1>
+        </div>
+      )}
+      {isModelReady && showReady && (
         <div className="async-countdown-overlay">
           <h1 className="async-countdown-title">準備完了！</h1>
         </div>
       )}
-      {!showReady && countdown > 0 && !isGameStarted && (
+      {isModelReady && !showReady && countdown > 0 && !isGameStarted && (
         <div className="async-countdown-overlay">
           <div className="async-countdown-display">
             {countdown}
           </div>
         </div>
       )}
-      {countdown === 0 && !isGameStarted && (
+      {isModelReady && countdown === 0 && !isGameStarted && (
         <div className="async-countdown-overlay">
           <h1 className="async-countdown-title">スタート！</h1>
         </div>
@@ -302,6 +315,7 @@ const AsyncGameScreen = ({ onBackToStart }: AsyncGameScreenProps) => {
         <PushUpModel
           modelPath="/models/pushUp.glb"
           currentFrame={currentFrame}
+          onLoad={handleModelReady}
         />
       </div>
     </div>
