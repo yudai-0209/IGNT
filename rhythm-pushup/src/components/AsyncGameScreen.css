@@ -176,3 +176,21 @@
   background: #cc0000;
   transform: scale(1.05);
 }
+
+.async-exercise-info {
+  padding: 4vh 6vw;
+}
+
+.async-exercise-reps {
+  font-size: clamp(48px, 15vw, 100px);
+  font-weight: bold;
+  color: #00ff00;
+  margin: clamp(10px, 2vh, 20px) 0;
+  text-shadow: 0 0 20px rgba(0, 255, 0, 0.8);
+}
+
+.async-exercise-tip {
+  font-size: clamp(14px, 3vw, 20px);
+  color: #ffcc00;
+  margin-top: clamp(15px, 3vh, 25px);
+}

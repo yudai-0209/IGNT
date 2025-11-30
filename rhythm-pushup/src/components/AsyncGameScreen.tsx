@@ -28,6 +28,7 @@ const AsyncGameScreen = ({ onBackToStart }: AsyncGameScreenProps) => {
   const [isModelReady, setIsModelReady] = useState<boolean>(false);
   const [showReady, setShowReady] = useState<boolean>(false);
   const [showPosturePrep, setShowPosturePrep] = useState<boolean>(false);
+  const [showExerciseInfo, setShowExerciseInfo] = useState<boolean>(false);
   const [countdown, setCountdown] = useState<number>(5);
   const [isGameStarted, setIsGameStarted] = useState<boolean>(false);
   const [isGameCleared, setIsGameCleared] = useState<boolean>(false);
@@ -108,15 +109,27 @@ const AsyncGameScreen = ({ onBackToStart }: AsyncGameScreenProps) => {
 
     const timer = setTimeout(() => {
       setShowPosturePrep(false);
-      countdownStartTimeRef.current = performance.now();
+      setShowExerciseInfo(true);
     }, 5000);
 
     return () => clearTimeout(timer);
   }, [showPosturePrep]);
 
+  // 筋トレ説明画面（5秒間表示）
+  useEffect(() => {
+    if (!showExerciseInfo) return;
+
+    const timer = setTimeout(() => {
+      setShowExerciseInfo(false);
+      countdownStartTimeRef.current = performance.now();
+    }, 5000);
+
+    return () => clearTimeout(timer);
+  }, [showExerciseInfo]);
+
   // ゲームカウントダウン処理（5秒）
   useEffect(() => {
-    if (isLoading || !isModelReady || showReady || showPosturePrep) return;
+    if (isLoading || !isModelReady || showReady || showPosturePrep || showExerciseInfo) return;
 
     let frameId: number;
 
@@ -144,7 +157,7 @@ const AsyncGameScreen = ({ onBackToStart }: AsyncGameScreenProps) => {
         cancelAnimationFrame(frameId);
       }
     };
-  }, [countdown, isLoading, isModelReady, showReady, showPosturePrep]);
+  }, [countdown, isLoading, isModelReady, showReady, showPosturePrep, showExerciseInfo]);
 
   // 一時停止処理
   useEffect(() => {
@@ -417,14 +430,22 @@ const AsyncGameScreen = ({ onBackToStart }: AsyncGameScreenProps) => {
           <h1 className="async-countdown-title">腕立て伏せの姿勢になってください</h1>
         </div>
       )}
-      {isModelReady && !showReady && !showPosturePrep && countdown > 0 && !isGameStarted && (
+      {isModelReady && showExerciseInfo && (
+        <div className="async-countdown-overlay async-exercise-info">
+          <h1 className="async-countdown-title">今からリズムに合わせて</h1>
+          <p className="async-exercise-reps">30回</p>
+          <h1 className="async-countdown-title">腕立てをします</h1>
+          <p className="async-exercise-tip">きつくなったら膝をついてもOK！</p>
+        </div>
+      )}
+      {isModelReady && !showReady && !showPosturePrep && !showExerciseInfo && countdown > 0 && !isGameStarted && (
         <div className="async-countdown-overlay">
           <div className="async-countdown-display">
             {countdown}
           </div>
         </div>
       )}
-      {isModelReady && !showPosturePrep && countdown === 0 && !isGameStarted && (
+      {isModelReady && !showPosturePrep && !showExerciseInfo && countdown === 0 && !isGameStarted && (
         <div className="async-countdown-overlay">
           <h1 className="async-countdown-title">スタート！</h1>
         </div>
