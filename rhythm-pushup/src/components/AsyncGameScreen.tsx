@@ -27,6 +27,7 @@ const AsyncGameScreen = ({ onBackToStart }: AsyncGameScreenProps) => {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isModelReady, setIsModelReady] = useState<boolean>(false);
   const [showReady, setShowReady] = useState<boolean>(false);
+  const [showPosturePrep, setShowPosturePrep] = useState<boolean>(false);
   const [countdown, setCountdown] = useState<number>(5);
   const [isGameStarted, setIsGameStarted] = useState<boolean>(false);
   const [isGameCleared, setIsGameCleared] = useState<boolean>(false);
@@ -94,16 +95,28 @@ const AsyncGameScreen = ({ onBackToStart }: AsyncGameScreenProps) => {
     setIsModelReady(true);
     setShowReady(true);
 
-    // 1秒後に「準備完了！」を消してカウントダウン開始
+    // 1秒後に「準備完了！」を消して姿勢準備画面へ
     setTimeout(() => {
       setShowReady(false);
-      countdownStartTimeRef.current = performance.now();
+      setShowPosturePrep(true);
     }, 1000);
   };
 
-  // カウントダウン処理（5秒）
+  // 姿勢準備画面（5秒間表示）
   useEffect(() => {
-    if (isLoading || !isModelReady || showReady) return;
+    if (!showPosturePrep) return;
+
+    const timer = setTimeout(() => {
+      setShowPosturePrep(false);
+      countdownStartTimeRef.current = performance.now();
+    }, 5000);
+
+    return () => clearTimeout(timer);
+  }, [showPosturePrep]);
+
+  // ゲームカウントダウン処理（5秒）
+  useEffect(() => {
+    if (isLoading || !isModelReady || showReady || showPosturePrep) return;
 
     let frameId: number;
 
@@ -131,7 +144,7 @@ const AsyncGameScreen = ({ onBackToStart }: AsyncGameScreenProps) => {
         cancelAnimationFrame(frameId);
       }
     };
-  }, [countdown, isLoading, isModelReady, showReady]);
+  }, [countdown, isLoading, isModelReady, showReady, showPosturePrep]);
 
   // 一時停止処理
   useEffect(() => {
@@ -399,14 +412,19 @@ const AsyncGameScreen = ({ onBackToStart }: AsyncGameScreenProps) => {
           <h1 className="async-countdown-title">準備完了！</h1>
         </div>
       )}
-      {isModelReady && !showReady && countdown > 0 && !isGameStarted && (
+      {isModelReady && showPosturePrep && (
+        <div className="async-countdown-overlay">
+          <h1 className="async-countdown-title">腕立て伏せの姿勢になってください</h1>
+        </div>
+      )}
+      {isModelReady && !showReady && !showPosturePrep && countdown > 0 && !isGameStarted && (
         <div className="async-countdown-overlay">
           <div className="async-countdown-display">
             {countdown}
           </div>
         </div>
       )}
-      {isModelReady && countdown === 0 && !isGameStarted && (
+      {isModelReady && !showPosturePrep && countdown === 0 && !isGameStarted && (
         <div className="async-countdown-overlay">
           <h1 className="async-countdown-title">スタート！</h1>
         </div>

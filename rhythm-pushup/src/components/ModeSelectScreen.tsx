@@ -39,13 +39,7 @@ const unlockAudio = () => {
   }
 };
 
-const ModeSelectScreen = ({ onSelectSync, onSelectAsync }: ModeSelectScreenProps) => {
-  const handleSyncClick = () => {
-    enableNoSleep();
-    unlockAudio();
-    onSelectSync();
-  };
-
+const ModeSelectScreen = ({ onSelectSync: _onSelectSync, onSelectAsync }: ModeSelectScreenProps) => {
   const handleAsyncClick = () => {
     enableNoSleep();
     unlockAudio();
@@ -65,7 +59,8 @@ const ModeSelectScreen = ({ onSelectSync, onSelectAsync }: ModeSelectScreenProps
           プレイモードを選択してください
         </p>
         <div className="mode-buttons">
-          <button onClick={handleSyncClick} className="btn-mode btn-sync">
+          <button className="btn-mode btn-sync btn-disabled" disabled>
+            <div className="mode-developing">開発中</div>
             <div className="mode-icon">🎯</div>
             <div className="mode-name">同期モード</div>
             <div className="mode-desc">あなたの動きに合わせて</div>

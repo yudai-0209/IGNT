@@ -112,3 +112,10 @@
   color: #00ff00;
   text-shadow: 0 0 10px rgba(0, 255, 0, 0.5);
 }
+
+.asset-loader-hint {
+  margin-top: clamp(5px, 1vh, 10px);
+  margin-bottom: clamp(15px, 3vh, 25px);
+  font-size: clamp(0.7rem, 2vw, 0.9rem);
+  color: #888;
+}

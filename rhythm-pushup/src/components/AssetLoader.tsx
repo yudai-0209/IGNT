@@ -148,6 +148,7 @@ const AssetLoader = ({ onLoadComplete, modelPath, musicPath, imagePaths }: Asset
     <div className="asset-loader">
       <div className="asset-loader-content">
         <h1 className="asset-loader-title">Loading...</h1>
+        <p className="asset-loader-hint">通信環境の良いところでプレイしてください</p>
 
         <div className="progress-section">
           <div className="progress-item">
