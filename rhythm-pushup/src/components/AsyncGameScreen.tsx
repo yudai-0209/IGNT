@@ -49,7 +49,7 @@ const AsyncGameScreen = ({ onBackToStart }: AsyncGameScreenProps) => {
     }
     if (audioRef.current) {
       audioRef.current.loop = true;
-      audioRef.current.volume = 1.0;
+      audioRef.current.volume = 0; // 音量は0のまま維持
     }
 
     // ファイルダウンロード完了、次は3Dモデルのシーン構築を待つ
@@ -59,6 +59,13 @@ const AsyncGameScreen = ({ onBackToStart }: AsyncGameScreenProps) => {
   // 3Dモデル準備完了時（シーン構築完了）
   const handleModelReady = () => {
     console.log('3Dモデルのシーン構築完了');
+
+    // 準備完了のタイミングで音量を1にする
+    if (audioRef.current) {
+      audioRef.current.volume = 1.0;
+      console.log('音量を1.0に設定');
+    }
+
     setIsModelReady(true);
     setShowReady(true);
 
