@@ -178,19 +178,20 @@
 }
 
 .async-exercise-info {
-  padding: 4vh 6vw;
+  padding: clamp(15px, 3vh, 25px) clamp(20px, 4vw, 40px);
+  max-width: 85%;
 }
 
 .async-exercise-reps {
-  font-size: clamp(48px, 15vw, 100px);
+  font-size: clamp(36px, 10vw, 70px);
   font-weight: bold;
   color: #00ff00;
-  margin: clamp(10px, 2vh, 20px) 0;
+  margin: clamp(5px, 1vh, 10px) 0;
   text-shadow: 0 0 20px rgba(0, 255, 0, 0.8);
 }
 
 .async-exercise-tip {
-  font-size: clamp(14px, 3vw, 20px);
+  font-size: clamp(12px, 2.5vw, 18px);
   color: #ffcc00;
-  margin-top: clamp(15px, 3vh, 25px);
+  margin-top: clamp(10px, 2vh, 20px);
 }

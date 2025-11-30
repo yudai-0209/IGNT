@@ -18,31 +18,40 @@ const enableNoSleep = () => {
 };
 
 // 音声をアンロックする関数（ユーザーインタラクション時に呼び出す）
-const unlockAudio = () => {
-  // 音声を作成して一瞬再生→即停止でアンロック
-  const audio = new Audio('/music/Metronome_120.mp3');
-  audio.volume = 0; // 完全無音のまま維持
+const unlockAudio = (): Promise<void> => {
+  return new Promise((resolve) => {
+    // 音声を作成して再生でアンロック
+    const audio = new Audio('/music/Metronome_120.mp3');
+    // muted + volume = 0 で確実に無音にする
+    audio.muted = true;
+    audio.volume = 0;
 
-  const playPromise = audio.play();
+    const playPromise = audio.play();
 
-  if (playPromise !== undefined) {
-    playPromise.then(() => {
-      // Promiseが解決してから停止（確実に再生が開始された後）
-      audio.pause();
-      audio.currentTime = 0;
-      // 音量は0のまま、AsyncGameScreen側で設定する
-      (window as any).__unlockedAudio = audio;
-      console.log('音声アンロック成功');
-    }).catch((e) => {
-      console.error('音声アンロック失敗:', e);
-    });
-  }
+    if (playPromise !== undefined) {
+      playPromise.then(() => {
+        // 再生が開始されたら即停止
+        audio.pause();
+        audio.currentTime = 0;
+        // ミュート解除（後で音量を上げれば鳴る状態に）
+        audio.muted = false;
+        (window as any).__unlockedAudio = audio;
+        console.log('音声アンロック成功');
+        resolve();
+      }).catch((e) => {
+        console.error('音声アンロック失敗:', e);
+        resolve(); // エラーでも続行
+      });
+    } else {
+      resolve();
+    }
+  });
 };
 
 const ModeSelectScreen = ({ onSelectSync: _onSelectSync, onSelectAsync }: ModeSelectScreenProps) => {
-  const handleAsyncClick = () => {
+  const handleAsyncClick = async () => {
     enableNoSleep();
-    unlockAudio();
+    await unlockAudio();
     onSelectAsync();
   };
 
