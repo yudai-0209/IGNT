@@ -33,10 +33,10 @@ const unlockAudio = (): Promise<void> => {
         // 再生が開始されたら即停止
         audio.pause();
         audio.currentTime = 0;
-        // ミュート解除（後で音量を上げれば鳴る状態に）
-        audio.muted = false;
+        // muted=true のまま維持（ゲーム開始時にfalseにする）
+        // volume=0 のまま維持（ゲーム開始時に1.0にする）
         (window as any).__unlockedAudio = audio;
-        console.log('音声アンロック成功');
+        console.log('音声アンロック成功（muted=true維持）');
         resolve();
       }).catch((e) => {
         console.error('音声アンロック失敗:', e);

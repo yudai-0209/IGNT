@@ -59,9 +59,11 @@ const GameScreen = ({
   const [currentFrame, setCurrentFrame] = useState<number>(25);
   const [showWarmUpMessage, setShowWarmUpMessage] = useState<boolean>(true);
   const [audioError, setAudioError] = useState<string | null>(null);
+  const [currentRep, setCurrentRep] = useState<number>(0);
   const [combo, setCombo] = useState<number>(0);
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const countAudioRef = useRef<HTMLAudioElement | null>(null);
   const animationFrameRef = useRef<number | null>(null);
   const startTimeRef = useRef<number | null>(null);
   const gameStartTimeRef = useRef<number | null>(null);
@@ -77,15 +79,41 @@ const GameScreen = ({
 
   useWakeLock(true);
 
+  // カウント音声を再生する関数
+  const playCountAudio = (count: number) => {
+    if (count < 1 || count > 30) return;
+
+    // 前の音声が再生中なら停止
+    if (countAudioRef.current) {
+      countAudioRef.current.pause();
+      countAudioRef.current = null;
+    }
+
+    // 新しい音声を作成して再生
+    const audio = new Audio(`/sounds/${count}.mp3`);
+    audio.volume = 0.8; // BGMより少し小さめ
+    countAudioRef.current = audio;
+
+    audio.play().catch((error) => {
+      console.error(`カウント音声(${count})の再生に失敗:`, error);
+    });
+  };
+
   // 初期化時に事前ロードされた音声を取得
   useEffect(() => {
     const syncModeAudio = (window as any).__syncModeAudio;
     if (syncModeAudio) {
+      // 確実に停止・無音状態にする
+      syncModeAudio.pause();
+      syncModeAudio.currentTime = 0;
+      syncModeAudio.muted = true; // ミュート維持
+      syncModeAudio.volume = 0;
       audioRef.current = syncModeAudio;
     } else {
       audioRef.current = new Audio('/music/Metronome_120.mp3');
       audioRef.current.loop = true;
-      audioRef.current.volume = 1.0;
+      audioRef.current.muted = true; // ミュート維持
+      audioRef.current.volume = 0;
     }
   }, []);
 
@@ -176,7 +204,10 @@ const GameScreen = ({
         startTimeRef.current = timestamp;
         gameStartTimeRef.current = timestamp;
         if (audioRef.current) {
+          // ゲーム開始時にミュート解除・音量設定し、最初から再生
           audioRef.current.currentTime = 0;
+          audioRef.current.muted = false; // ここでミュート解除
+          audioRef.current.volume = 1.0;
           audioRef.current.play().catch((error) => {
             console.error('メトロノーム音楽の再生に失敗しました:', error);
             setAudioError(`音楽再生エラー: ${error.name} - ${error.message}`);
@@ -209,13 +240,11 @@ const GameScreen = ({
       let circleStyle: CircleStyle = { scale: 1.0, rotation: 0, opacity: 1.0, blur: 0 };
       let burstStyle: BurstStyle = { scale: 0, opacity: 0 };
 
-      // 新しいサイクルに入った時のコンボリセット判定（最初の2サイクルはスキップ）
-      if (currentCycle !== lastCycleRef.current && currentCycle >= 2) {
-        if (lastCycleRef.current >= 2) {
-          // 前のサイクルでバーストがなかったらコンボリセット
-          if (!cycleHadBurstRef.current) {
-            setCombo(0);
-          }
+      // 新しいサイクルに入った時のコンボリセット判定
+      if (currentCycle !== lastCycleRef.current) {
+        // 前のサイクルでバーストがなかったらコンボリセット
+        if (lastCycleRef.current >= 0 && !cycleHadBurstRef.current) {
+          setCombo(0);
         }
         lastCycleRef.current = currentCycle;
         cycleHadBurstRef.current = false;
@@ -255,11 +284,16 @@ const GameScreen = ({
           blur: speed * 5
         };
 
-        // バーストエフェクト：250ms以降でユーザーが下の位置なら発動（1サイクル1回のみ）
-        if (isUserDown && isCircleSmallestTiming && !cycleHadBurstRef.current) {
+        // バーストエフェクト：250ms以降でユーザーが下の位置なら発動（1サイクル1回、かつ上に戻ってから）
+        if (isUserDown && isCircleSmallestTiming && !cycleHadBurstRef.current && !burstTriggeredRef.current) {
           burstTriggeredRef.current = true;
           cycleHadBurstRef.current = true; // このサイクルでバーストあり
           setCombo(prev => prev + 1); // コンボ加算
+          setCurrentRep(prev => {
+            const newCount = prev + 1;
+            playCountAudio(newCount); // カウント音声を再生
+            return newCount;
+          });
         }
 
         isGoingDownRef.current = true;
@@ -274,15 +308,20 @@ const GameScreen = ({
           blur: 0
         };
 
-        // バーストエフェクト：ユーザーが下の位置 かつ circleが最小のタイミング の時のみ発動（1サイクル1回のみ）
-        if (isUserDown && isCircleSmallestTiming && !cycleHadBurstRef.current) {
+        // バーストエフェクト：ユーザーが下の位置 かつ circleが最小のタイミング の時のみ発動（1サイクル1回、かつ上に戻ってから）
+        if (isUserDown && isCircleSmallestTiming && !cycleHadBurstRef.current && !burstTriggeredRef.current) {
           burstTriggeredRef.current = true;
           cycleHadBurstRef.current = true; // このサイクルでバーストあり
           setCombo(prev => prev + 1); // コンボ加算
+          setCurrentRep(prev => {
+            const newCount = prev + 1;
+            playCountAudio(newCount); // カウント音声を再生
+            return newCount;
+          });
         }
 
-        // バーストが発動済みならアニメーション表示
-        if (burstTriggeredRef.current) {
+        // このサイクルでバーストが発動したならアニメーション表示
+        if (cycleHadBurstRef.current) {
           const burstProgress = Math.min((cycleTime - 500) / 500, 1);
           const burstEased = easeOutCubic(burstProgress);
           burstStyle = {
@@ -431,10 +470,17 @@ const GameScreen = ({
       {isGameStarted && !isGameCleared && (
         <>
           <button className="async-pause-button" onClick={handlePause}>⏸</button>
-          {combo > 0 && !showWarmUpMessage && (
-            <div className="combo-counter">
-              COMBO: {combo}x
-            </div>
+          {!showWarmUpMessage && (
+            <>
+              <div className="async-rep-counter">
+                {currentRep}/30
+              </div>
+              {combo > 0 && (
+                <div className="combo-counter">
+                  COMBO: {combo}x
+                </div>
+              )}
+            </>
           )}
         </>
       )}

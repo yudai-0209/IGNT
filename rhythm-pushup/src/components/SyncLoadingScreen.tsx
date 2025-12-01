@@ -15,16 +15,20 @@ const SyncLoadingScreen = ({ onLoadComplete }: SyncLoadingScreenProps) => {
     const unlockedAudio = (window as any).__unlockedAudio;
     if (unlockedAudio) {
       console.log('アンロック済み音声を使用（SyncLoading）');
-      // アンロック時はvolume=0で無音再生しているので、ここで音量とループを設定
+      // 確実に停止・無音状態にする
+      unlockedAudio.pause();
+      unlockedAudio.currentTime = 0;
       unlockedAudio.loop = true;
-      unlockedAudio.volume = 1.0;
+      unlockedAudio.muted = true; // ミュート維持（ゲーム開始時にfalseにする）
+      unlockedAudio.volume = 0; // 音量は0のまま維持（ゲーム開始時に1.0にする）
       (window as any).__syncModeAudio = unlockedAudio;
     } else {
       // プリロードされた音楽URLを使用
       const preloadedUrl = (window as any).__preloadedMusicUrl;
       const audio = new Audio(preloadedUrl || '/music/Metronome_120.mp3');
       audio.loop = true;
-      audio.volume = 1.0;
+      audio.muted = true; // ミュート維持（ゲーム開始時にfalseにする）
+      audio.volume = 0; // 音量は0のまま維持（ゲーム開始時に1.0にする）
       (window as any).__syncModeAudio = audio;
     }
 

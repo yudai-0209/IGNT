@@ -41,11 +41,13 @@ const AsyncGameScreen = ({ onBackToStart }: AsyncGameScreenProps) => {
   const [circleVisible, setCircleVisible] = useState<boolean>(true);
   const [burstScale, setBurstScale] = useState<number>(0);
   const [burstOpacity, setBurstOpacity] = useState<number>(0);
-  const [remainingReps, setRemainingReps] = useState<number>(30);
+  const [currentRep, setCurrentRep] = useState<number>(0);
   const [showWarmUpMessage, setShowWarmUpMessage] = useState<boolean>(true);
   const [audioError, setAudioError] = useState<string | null>(null);
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const countAudioRef = useRef<HTMLAudioElement | null>(null);
+  const countAudioPlayedRef = useRef<boolean>(false); // このサイクルで音声再生済みか
   const animationFrameRef = useRef<number | null>(null);
   const startTimeRef = useRef<number | null>(null);
   const gameStartTimeRef = useRef<number | null>(null);
@@ -58,12 +60,35 @@ const AsyncGameScreen = ({ onBackToStart }: AsyncGameScreenProps) => {
   // 画面スリープを防止（ゲーム画面にいる間は常に有効）
   useWakeLock(true);
 
+  // カウント音声を再生する関数
+  const playCountAudio = (count: number) => {
+    if (count < 1 || count > 30) return;
+
+    // 前の音声が再生中なら停止
+    if (countAudioRef.current) {
+      countAudioRef.current.pause();
+      countAudioRef.current = null;
+    }
+
+    // 新しい音声を作成して再生
+    const audio = new Audio(`/sounds/${count}.mp3`);
+    audio.volume = 0.8; // BGMより少し小さめ
+    countAudioRef.current = audio;
+
+    audio.play().catch((error) => {
+      console.error(`カウント音声(${count})の再生に失敗:`, error);
+    });
+  };
+
   // アセットローディング完了時（ファイルダウンロード完了）
   const handleLoadComplete = () => {
     // アンロック済みの音声があればそれを優先使用
     const unlockedAudio = (window as any).__unlockedAudio;
     if (unlockedAudio) {
       console.log('アンロック済み音声を使用');
+      // 確実に停止・無音状態にする
+      unlockedAudio.pause();
+      unlockedAudio.currentTime = 0;
       audioRef.current = unlockedAudio;
     } else {
       // プリロードされた音楽URLを使用
@@ -76,7 +101,8 @@ const AsyncGameScreen = ({ onBackToStart }: AsyncGameScreenProps) => {
     }
     if (audioRef.current) {
       audioRef.current.loop = true;
-      audioRef.current.volume = 0; // 音量は0のまま維持
+      audioRef.current.muted = true; // ミュート維持（ゲーム開始時にfalseにする）
+      audioRef.current.volume = 0; // 音量は0のまま維持（ゲーム開始時に1.0にする）
     }
 
     // ファイルダウンロード完了、次は3Dモデルのシーン構築を待つ
@@ -87,11 +113,8 @@ const AsyncGameScreen = ({ onBackToStart }: AsyncGameScreenProps) => {
   const handleModelReady = () => {
     console.log('3Dモデルのシーン構築完了');
 
-    // 準備完了のタイミングで音量を1にする
-    if (audioRef.current) {
-      audioRef.current.volume = 1.0;
-      console.log('音量を1.0に設定');
-    }
+    // 音量は0のまま維持（ゲーム開始時に1.0にする）
+    // 以前はここでvolume=1.0にしていたが、音が鳴る原因になっていた
 
     setIsModelReady(true);
     setShowReady(true);
@@ -187,7 +210,10 @@ const AsyncGameScreen = ({ onBackToStart }: AsyncGameScreenProps) => {
         startTimeRef.current = timestamp;
         gameStartTimeRef.current = timestamp;
         if (audioRef.current) {
+          // ゲーム開始時にミュート解除・音量設定し、最初から再生
           audioRef.current.currentTime = 0;
+          audioRef.current.muted = false; // ここでミュート解除
+          audioRef.current.volume = 1.0;
           audioRef.current.play().catch((error) => {
             console.error('メトロノーム音楽の再生に失敗しました:', error);
             const errorMessage = `音楽再生エラー: ${error.name} - ${error.message}`;
@@ -235,6 +261,7 @@ const AsyncGameScreen = ({ onBackToStart }: AsyncGameScreenProps) => {
         setBurstScale(0);
         setBurstOpacity(0);
         isGoingDownRef.current = true;
+        countAudioPlayedRef.current = false; // サイクル開始時にリセット
       } else if (cycleTime < 500) {
         // 1拍目 (100-500ms): 下降 - ググッと縮む + 回転 + ブラー
         const progress = (cycleTime - 100) / 400; // 0→1
@@ -255,6 +282,15 @@ const AsyncGameScreen = ({ onBackToStart }: AsyncGameScreenProps) => {
         // 放射線: 非表示
         setBurstScale(0);
         setBurstOpacity(0);
+
+        // カウント音声を0.2秒早く再生（300ms時点で再生、表示更新は500msで行う）
+        if (cycleTime >= 300 && !countAudioPlayedRef.current && musicTime >= 4000) {
+          const nextCount = repCountRef.current + 1;
+          if (nextCount <= 30) {
+            playCountAudio(nextCount);
+            countAudioPlayedRef.current = true;
+          }
+        }
 
         isGoingDownRef.current = true;
       } else if (cycleTime < 1000) {
@@ -281,11 +317,12 @@ const AsyncGameScreen = ({ onBackToStart }: AsyncGameScreenProps) => {
 
         // 1拍目（下降）から2拍目（静止）に入った瞬間にカウント
         // 最初の4秒（2回分）はカウントしない
+        // ※音声は0.2秒前に再生済み（cycleTime 300ms時点）
         if (isGoingDownRef.current) {
           isGoingDownRef.current = false;
           if (musicTime >= 4000) {
             repCountRef.current += 1;
-            setRemainingReps(30 - repCountRef.current);
+            setCurrentRep(repCountRef.current); // カウントアップ（1→30）
           }
         }
       } else if (cycleTime < 1500) {
@@ -459,8 +496,7 @@ const AsyncGameScreen = ({ onBackToStart }: AsyncGameScreenProps) => {
           </button>
           {!showWarmUpMessage && (
             <div className="async-rep-counter">
-              <div className="async-rep-label">残り</div>
-              {remainingReps}/30
+              {currentRep}/30
             </div>
           )}
         </>

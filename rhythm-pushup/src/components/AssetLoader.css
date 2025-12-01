@@ -8,6 +8,8 @@
   display: flex;
   justify-content: center;
   align-items: center;
+  padding-bottom: 20%;  /* 下20%を空ける */
+  box-sizing: border-box;
   z-index: 1000;
 }
 
@@ -15,13 +17,13 @@
   text-align: center;
   color: #00ff00;
   width: 80%;
-  max-width: 400px;
+  max-width: 320px;
 }
 
 .asset-loader-title {
-  font-size: clamp(1.5rem, 6vw, 2.5rem);
+  font-size: clamp(1.2rem, 4.5vw, 1.8rem);
   font-weight: bold;
-  margin-bottom: clamp(20px, 5vh, 40px);
+  margin-bottom: clamp(8px, 1.5vh, 15px);
   text-shadow: 0 0 20px rgba(0, 255, 0, 0.5);
   animation: pulse 1.5s ease-in-out infinite;
 }
@@ -38,8 +40,8 @@
 .progress-section {
   display: flex;
   flex-direction: column;
-  gap: clamp(10px, 2.5vh, 20px);
-  margin-bottom: clamp(15px, 4vh, 30px);
+  gap: clamp(4px, 0.8vh, 6px);
+  margin-bottom: clamp(6px, 1vh, 10px);
 }
 
 .progress-item {
@@ -49,16 +51,16 @@
 .progress-label {
   display: flex;
   justify-content: space-between;
-  margin-bottom: clamp(4px, 1vh, 8px);
-  font-size: clamp(0.8rem, 2.5vw, 1rem);
+  margin-bottom: clamp(2px, 0.4vh, 3px);
+  font-size: clamp(0.55rem, 1.5vw, 0.7rem);
   color: #00ff00;
 }
 
 .progress-bar-container {
   width: 100%;
-  height: clamp(8px, 1.5vh, 12px);
+  height: clamp(4px, 0.8vh, 6px);
   background: rgba(0, 255, 0, 0.1);
-  border-radius: clamp(4px, 0.75vh, 6px);
+  border-radius: clamp(2px, 0.4vh, 3px);
   overflow: hidden;
   border: 1px solid rgba(0, 255, 0, 0.3);
 }
@@ -66,23 +68,23 @@
 .progress-bar {
   display: block;
   height: 100%;
-  min-height: clamp(8px, 1.5vh, 12px);
+  min-height: clamp(4px, 0.8vh, 6px);
   background: #00ff00;
   background: linear-gradient(90deg, #00ff00 0%, #00cc00 100%);
-  border-radius: clamp(4px, 0.75vh, 6px);
+  border-radius: clamp(2px, 0.4vh, 3px);
   transition: width 0.3s ease;
   box-shadow: 0 0 10px rgba(0, 255, 0, 0.5);
 }
 
 .total-progress {
-  margin-top: clamp(10px, 2.5vh, 20px);
+  margin-top: clamp(20px, 4vh, 35px);  /* バー1-2本分の間隔 */
 }
 
 .total-progress-bar-container {
   width: 100%;
-  height: clamp(14px, 2.5vh, 20px);
+  height: clamp(10px, 2vh, 16px);
   background: rgba(0, 255, 0, 0.1);
-  border-radius: clamp(7px, 1.25vh, 10px);
+  border-radius: clamp(5px, 1vh, 8px);
   overflow: hidden;
   border: 2px solid rgba(0, 255, 0, 0.5);
 }
@@ -90,7 +92,7 @@
 .total-progress-bar {
   height: 100%;
   background: linear-gradient(90deg, #00ff00 0%, #00cc00 50%, #00ff00 100%);
-  border-radius: clamp(5px, 1vh, 8px);
+  border-radius: clamp(4px, 0.8vh, 6px);
   transition: width 0.3s ease;
   box-shadow: 0 0 15px rgba(0, 255, 0, 0.7);
   animation: shimmer 2s linear infinite;
@@ -112,15 +114,15 @@
 }
 
 .total-progress-text {
-  margin-top: clamp(8px, 2vh, 15px);
-  font-size: clamp(0.9rem, 3vw, 1.2rem);
+  margin-top: clamp(6px, 1.2vh, 10px);
+  font-size: clamp(0.8rem, 2.5vw, 1rem);
   color: #00ff00;
   text-shadow: 0 0 10px rgba(0, 255, 0, 0.5);
 }
 
 .asset-loader-hint {
-  margin-top: clamp(5px, 1vh, 10px);
-  margin-bottom: clamp(15px, 3vh, 25px);
-  font-size: clamp(0.7rem, 2vw, 0.9rem);
+  margin-top: clamp(3px, 0.5vh, 5px);
+  margin-bottom: clamp(8px, 1.5vh, 12px);
+  font-size: clamp(0.6rem, 1.6vw, 0.75rem);
   color: #888;
 }
