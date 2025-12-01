@@ -1,9 +1,20 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import type { Results } from '@mediapipe/pose';
 import PoseDetection from './PoseDetection';
 import type { CalibrationData } from '../types';
 import './CalibrationScreen.css';
 import './AsyncGameScreen.css';
+
+// 音声ファイルのパス
+const AUDIO_FILES = {
+  calibrationIntro: '/sounds/calibration_intro.mp3',
+  showWholeBody: '/sounds/show_whole_body.mp3',
+  wristBelowShoulder: '/sounds/wrist_below_shoulder.mp3',
+  extendArms: '/sounds/extend_arms.mp3',
+  bendArms: '/sounds/bend_arms.mp3',
+  holdPosition: '/sounds/hold_position.mp3',
+  calibrationComplete: '/sounds/calibration_complete.mp3',
+};
 
 interface CalibrationScreenProps {
   onComplete: (data: CalibrationData) => void;
@@ -22,7 +33,6 @@ interface PostureStatus {
 const CalibrationScreen = ({ onComplete, assetsLoaded = false, modelReady = false }: CalibrationScreenProps) => {
   const [step, setStep] = useState<CalibrationStep>('intro');
   const [currentAngle, setCurrentAngle] = useState<number>(0);
-  const [recordingProgress, setRecordingProgress] = useState<number>(0);
   const [upperAngle, setUpperAngle] = useState<number>(0);
   const [lowerAngle, setLowerAngle] = useState<number>(0);
   const [postureStatus, setPostureStatus] = useState<PostureStatus>({
@@ -32,15 +42,145 @@ const CalibrationScreen = ({ onComplete, assetsLoaded = false, modelReady = fals
   const [upperPostureStableTime, setUpperPostureStableTime] = useState<number>(0);
   const [lowerPostureStableTime, setLowerPostureStableTime] = useState<number>(0);
 
+  // 音声関連
+  const audioRefs = useRef<{ [key: string]: HTMLAudioElement }>({});
+  const currentAudioRef = useRef<string | null>(null);
+  const lastPlayedAudioRef = useRef<string | null>(null);
+
   // 未使用の警告を防ぐ
   void assetsLoaded;
 
+  // 音声をプリロード済みから取得
+  useEffect(() => {
+    const preloaded = (window as any).__preloadedGameAudios;
+    if (preloaded) {
+      // プリロード済みの音声を使用
+      audioRefs.current = {
+        calibrationIntro: preloaded['calibration_intro'],
+        showWholeBody: preloaded['show_whole_body'],
+        wristBelowShoulder: preloaded['wrist_below_shoulder'],
+        extendArms: preloaded['extend_arms'],
+        bendArms: preloaded['bend_arms'],
+        holdPosition: preloaded['hold_position'],
+        calibrationComplete: preloaded['calibration_complete'],
+      };
+    } else {
+      // フォールバック：プリロードがない場合は新規作成
+      Object.entries(AUDIO_FILES).forEach(([key, path]) => {
+        const audio = new Audio(path);
+        audio.preload = 'auto';
+        audioRefs.current[key] = audio;
+      });
+    }
+  }, []);
+
+  // 音声再生関数
+  const playAudio = useCallback((audioKey: string) => {
+    // 同じ音声が既に再生中の場合はスキップ
+    if (currentAudioRef.current === audioKey) {
+      return;
+    }
+
+    // 前回と同じ音声の場合もスキップ（連続再生防止）
+    if (lastPlayedAudioRef.current === audioKey) {
+      return;
+    }
+
+    // 現在再生中の音声を停止
+    if (currentAudioRef.current && audioRefs.current[currentAudioRef.current]) {
+      audioRefs.current[currentAudioRef.current].pause();
+      audioRefs.current[currentAudioRef.current].currentTime = 0;
+    }
+
+    // 新しい音声を再生
+    const audio = audioRefs.current[audioKey];
+    if (audio) {
+      currentAudioRef.current = audioKey;
+      lastPlayedAudioRef.current = audioKey;
+      audio.currentTime = 0;
+      audio.play().catch(err => {
+        console.warn('Audio playback failed:', err);
+      });
+
+      // 再生終了時にクリア
+      audio.onended = () => {
+        currentAudioRef.current = null;
+      };
+    }
+  }, []);
+
+  // 全ての音声を停止
+  const stopAllAudio = useCallback(() => {
+    Object.values(audioRefs.current).forEach(audio => {
+      audio.pause();
+      audio.currentTime = 0;
+    });
+    currentAudioRef.current = null;
+  }, []);
+
   const UPPER_ANGLE_MIN = 170; // 上の姿勢の最低角度
   const LOWER_ANGLE_MAX = 120; // 下の姿勢の最大角度
+
+  // 状態に応じた音声再生
+  useEffect(() => {
+    if (step === 'intro') {
+      playAudio('calibrationIntro');
+    } else if (step === 'complete') {
+      playAudio('calibrationComplete');
+    }
+  }, [step, playAudio]);
+
+  // upper/lowerステップ時の条件に応じた音声再生
+  useEffect(() => {
+    if (step === 'upper') {
+      const isUpperAngleValid = currentAngle >= UPPER_ANGLE_MIN;
+      const isUpperPostureReady = postureStatus.allLandmarksVisible &&
+                                   postureStatus.wristBelowShoulder &&
+                                   isUpperAngleValid;
+
+      if (isUpperPostureReady) {
+        // 全条件達成：キープ音声
+        playAudio('holdPosition');
+      } else if (!postureStatus.allLandmarksVisible) {
+        // 全身が見えない
+        playAudio('showWholeBody');
+      } else if (!postureStatus.wristBelowShoulder) {
+        // 手首が肩より上
+        playAudio('wristBelowShoulder');
+      } else if (!isUpperAngleValid) {
+        // 腕を伸ばしていない
+        playAudio('extendArms');
+      }
+    } else if (step === 'lower') {
+      const isLowerAngleValid = currentAngle > 0 && currentAngle <= LOWER_ANGLE_MAX;
+      const isLowerPostureReady = postureStatus.allLandmarksVisible &&
+                                   postureStatus.wristBelowShoulder &&
+                                   isLowerAngleValid;
+
+      if (isLowerPostureReady) {
+        // 全条件達成：キープ音声
+        playAudio('holdPosition');
+      } else if (!postureStatus.allLandmarksVisible) {
+        // 全身が見えない
+        playAudio('showWholeBody');
+      } else if (!postureStatus.wristBelowShoulder) {
+        // 手首が肩より上
+        playAudio('wristBelowShoulder');
+      } else if (!isLowerAngleValid) {
+        // 腕を曲げていない
+        playAudio('bendArms');
+      }
+    }
+  }, [step, currentAngle, postureStatus, playAudio]);
+
+  // ステップ変更時にlastPlayedをリセット（新しいステップで同じ音声を再生可能に）
+  useEffect(() => {
+    lastPlayedAudioRef.current = null;
+    stopAllAudio();
+  }, [step, stopAllAudio]);
+
   const REQUIRED_STABLE_TIME = 3000; // 3秒 = 3000ms
 
-  // useRefで角度バッファを管理（再レンダリングを防ぐ）
-  const angleBufferRef = useRef<number[]>([]);
   const upperPostureStableStartRef = useRef<number | null>(null);
   const lowerPostureStableStartRef = useRef<number | null>(null);
 
@@ -139,56 +279,24 @@ const CalibrationScreen = ({ onComplete, assetsLoaded = false, modelReady = fals
         setLowerPostureStableTime(0);
       }
 
-      // 記録処理（上の姿勢）
+      // 記録処理（上の姿勢）- 3秒経過したら即完了
       if (step === 'upper') {
-        // 上の姿勢の全条件が5秒以上満たされている場合のみ記録
         const upperStable = upperPostureStableStartRef.current !== null &&
                             (now - upperPostureStableStartRef.current) >= REQUIRED_STABLE_TIME;
 
         if (upperStable) {
-          angleBufferRef.current.push(roundedAngle);
-
-          if (angleBufferRef.current.length >= 30) {
-            const average =
-              angleBufferRef.current.reduce((sum, a) => sum + a, 0) /
-              angleBufferRef.current.length;
-            setUpperAngle(Math.round(average));
-            setStep('lower');
-            angleBufferRef.current = [];
-            setRecordingProgress(0);
-          } else {
-            setRecordingProgress((angleBufferRef.current.length / 30) * 100);
-          }
-        } else {
-          // 条件を満たさなくなったらバッファをリセット
-          if (angleBufferRef.current.length > 0) {
-            angleBufferRef.current = [];
-            setRecordingProgress(0);
-          }
+          // 3秒経過したらその時点の角度で完了
+          setUpperAngle(roundedAngle);
+          setStep('lower');
         }
       } else if (step === 'lower') {
-        // 下の姿勢の全条件が5秒以上満たされている場合のみ記録
         const lowerStable = lowerPostureStableStartRef.current !== null &&
                             (now - lowerPostureStableStartRef.current) >= REQUIRED_STABLE_TIME;
 
         if (lowerStable) {
-          angleBufferRef.current.push(roundedAngle);
-
-          if (angleBufferRef.current.length >= 30) {
-            const average =
-              angleBufferRef.current.reduce((sum, a) => sum + a, 0) /
-              angleBufferRef.current.length;
-            setLowerAngle(Math.round(average));
-            setStep('complete');
-          } else {
-            setRecordingProgress((angleBufferRef.current.length / 30) * 100);
-          }
-        } else {
-          // 条件を満たさなくなったらバッファをリセット
-          if (angleBufferRef.current.length > 0) {
-            angleBufferRef.current = [];
-            setRecordingProgress(0);
-          }
+          // 3秒経過したらその時点の角度で完了
+          setLowerAngle(roundedAngle);
+          setStep('complete');
         }
       }
     } else {
@@ -203,12 +311,6 @@ const CalibrationScreen = ({ onComplete, assetsLoaded = false, modelReady = fals
       setLowerPostureStableTime(0);
     }
   };
-
-  // ステップ変更時にバッファをリセット
-  useEffect(() => {
-    angleBufferRef.current = [];
-    setRecordingProgress(0);
-  }, [step]);
 
   const handleComplete = () => {
     const calibrationData: CalibrationData = {
@@ -256,7 +358,6 @@ const CalibrationScreen = ({ onComplete, assetsLoaded = false, modelReady = fals
                                      postureStatus.wristBelowShoulder &&
                                      isUpperAngleValid;
         const upperWaitingForStable = isUpperPostureReady && upperPostureStableTime < REQUIRED_STABLE_TIME;
-        const upperReadyToRecord = upperPostureStableTime >= REQUIRED_STABLE_TIME;
 
         return (
           <div className="calibration-content">
@@ -290,18 +391,6 @@ const CalibrationScreen = ({ onComplete, assetsLoaded = false, modelReady = fals
               </div>
             )}
 
-            {upperReadyToRecord && (
-              <div className="angle-success">
-                この姿勢をキープ！記録中...
-                <div className="progress-bar">
-                  <div
-                    className="progress-fill recording"
-                    style={{ width: `${recordingProgress}%` }}
-                  />
-                </div>
-              </div>
-            )}
-
             {!isUpperPostureReady && (
               <div className="angle-warning">
                 上記の条件を全て満たしてください
@@ -316,7 +405,6 @@ const CalibrationScreen = ({ onComplete, assetsLoaded = false, modelReady = fals
                                      postureStatus.wristBelowShoulder &&
                                      isLowerAngleValid;
         const lowerWaitingForStable = isLowerPostureReady && lowerPostureStableTime < REQUIRED_STABLE_TIME;
-        const lowerReadyToRecord = lowerPostureStableTime >= REQUIRED_STABLE_TIME;
 
         return (
           <div className="calibration-content">
@@ -345,18 +433,6 @@ const CalibrationScreen = ({ onComplete, assetsLoaded = false, modelReady = fals
                   <div
                     className="progress-fill"
                     style={{ width: `${(lowerPostureStableTime / REQUIRED_STABLE_TIME) * 100}%` }}
-                  />
-                </div>
-              </div>
-            )}
-
-            {lowerReadyToRecord && (
-              <div className="angle-success">
-                この姿勢をキープ！記録中...
-                <div className="progress-bar">
-                  <div
-                    className="progress-fill recording"
-                    style={{ width: `${recordingProgress}%` }}
                   />
                 </div>
               </div>
@@ -409,16 +485,158 @@ const CalibrationScreen = ({ onComplete, assetsLoaded = false, modelReady = fals
     );
   }
 
+  // キャリブレーション用のオーバーレイコンテンツを生成
+  const renderCalibrationOverlay = () => {
+    const circumference = 2 * Math.PI * 45; // SVG円の円周
+
+    if (step === 'upper') {
+      const isUpperAngleValid = currentAngle >= UPPER_ANGLE_MIN;
+      const isUpperPostureReady = postureStatus.allLandmarksVisible &&
+                                   postureStatus.wristBelowShoulder &&
+                                   isUpperAngleValid;
+      const progressPercent = (upperPostureStableTime / REQUIRED_STABLE_TIME) * 100;
+
+      // 全条件達成 → 円形プログレス
+      if (isUpperPostureReady) {
+        return (
+          <div className="calibration-overlay calibration-overlay-centered">
+            <div className="calibration-step-label">ステップ 1/2「上」の姿勢</div>
+            <div className="circular-progress-container">
+              <svg className="circular-progress" viewBox="0 0 100 100">
+                <circle className="circular-progress-bg" cx="50" cy="50" r="45" />
+                <circle
+                  className="circular-progress-fill"
+                  cx="50" cy="50" r="45"
+                  strokeDasharray={circumference}
+                  strokeDashoffset={circumference - (circumference * progressPercent / 100)}
+                />
+              </svg>
+              <div className="circular-progress-text">
+                {Math.ceil((REQUIRED_STABLE_TIME - upperPostureStableTime) / 1000)}
+              </div>
+            </div>
+            <div className="calibration-hold-message">キープ！！</div>
+          </div>
+        );
+      }
+
+      // 条件未達成 → 未達成を強調
+      return (
+        <div className="calibration-overlay">
+          <div className="calibration-step-label">ステップ 1/2「上」の姿勢</div>
+          <div className="calibration-completed-conditions">
+            {postureStatus.allLandmarksVisible && <span className="completed-badge">✓ 全身</span>}
+            {postureStatus.wristBelowShoulder && <span className="completed-badge">✓ 手首</span>}
+            {isUpperAngleValid && <span className="completed-badge">✓ 角度</span>}
+          </div>
+          <div className="calibration-pending-conditions">
+            {!postureStatus.allLandmarksVisible && (
+              <div className="pending-condition">
+                <div className="pending-icon">👤</div>
+                <div className="pending-text">全身をカメラに映してください</div>
+              </div>
+            )}
+            {!postureStatus.wristBelowShoulder && postureStatus.allLandmarksVisible && (
+              <div className="pending-condition">
+                <div className="pending-icon">✋</div>
+                <div className="pending-text">手首を肩より下に</div>
+              </div>
+            )}
+            {!isUpperAngleValid && postureStatus.allLandmarksVisible && postureStatus.wristBelowShoulder && (
+              <div className="pending-condition">
+                <div className="pending-icon">📐</div>
+                <div className="pending-text">腕を伸ばしてください</div>
+                <div className="pending-detail">現在 {currentAngle}° → {UPPER_ANGLE_MIN}°以上</div>
+              </div>
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    if (step === 'lower') {
+      const isLowerAngleValid = currentAngle > 0 && currentAngle <= LOWER_ANGLE_MAX;
+      const isLowerPostureReady = postureStatus.allLandmarksVisible &&
+                                   postureStatus.wristBelowShoulder &&
+                                   isLowerAngleValid;
+      const progressPercent = (lowerPostureStableTime / REQUIRED_STABLE_TIME) * 100;
+
+      // 全条件達成 → 円形プログレス
+      if (isLowerPostureReady) {
+        return (
+          <div className="calibration-overlay calibration-overlay-centered">
+            <div className="calibration-step-label">ステップ 2/2「下」の姿勢</div>
+            <div className="circular-progress-container">
+              <svg className="circular-progress" viewBox="0 0 100 100">
+                <circle className="circular-progress-bg" cx="50" cy="50" r="45" />
+                <circle
+                  className="circular-progress-fill"
+                  cx="50" cy="50" r="45"
+                  strokeDasharray={circumference}
+                  strokeDashoffset={circumference - (circumference * progressPercent / 100)}
+                />
+              </svg>
+              <div className="circular-progress-text">
+                {Math.ceil((REQUIRED_STABLE_TIME - lowerPostureStableTime) / 1000)}
+              </div>
+            </div>
+            <div className="calibration-hold-message">キープ！！</div>
+          </div>
+        );
+      }
+
+      // 条件未達成 → 未達成を強調
+      return (
+        <div className="calibration-overlay">
+          <div className="calibration-step-label">ステップ 2/2「下」の姿勢</div>
+          <div className="calibration-completed-conditions">
+            {postureStatus.allLandmarksVisible && <span className="completed-badge">✓ 全身</span>}
+            {postureStatus.wristBelowShoulder && <span className="completed-badge">✓ 手首</span>}
+            {isLowerAngleValid && <span className="completed-badge">✓ 角度</span>}
+          </div>
+          <div className="calibration-pending-conditions">
+            {!postureStatus.allLandmarksVisible && (
+              <div className="pending-condition">
+                <div className="pending-icon">👤</div>
+                <div className="pending-text">全身をカメラに映してください</div>
+              </div>
+            )}
+            {!postureStatus.wristBelowShoulder && postureStatus.allLandmarksVisible && (
+              <div className="pending-condition">
+                <div className="pending-icon">✋</div>
+                <div className="pending-text">手首を肩より下に</div>
+              </div>
+            )}
+            {!isLowerAngleValid && postureStatus.allLandmarksVisible && postureStatus.wristBelowShoulder && (
+              <div className="pending-condition">
+                <div className="pending-icon">📐</div>
+                <div className="pending-text">腕を曲げてください</div>
+                <div className="pending-detail">現在 {currentAngle}° → {LOWER_ANGLE_MAX}°以下</div>
+              </div>
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    return null;
+  };
+
   return (
     <div className="calibration-screen async-game-screen" style={{ background: 'transparent' }}>
-      {/* 背景、circle、3DモデルはApp.tsxで表示するため削除 */}
-      <div className="calibration-main">
-        {renderStepContent()}
-      </div>
-      {step !== 'intro' && step !== 'complete' && (
-        <div className="calibration-camera">
-          <PoseDetection onPoseDetected={handlePoseDetected} />
+      {/* intro と complete はカメラなしで表示 */}
+      {(step === 'intro' || step === 'complete') && (
+        <div className="calibration-main">
+          {renderStepContent()}
         </div>
+      )}
+      {/* upper と lower はフルスクリーンカメラ + オーバーレイ */}
+      {(step === 'upper' || step === 'lower') && (
+        <PoseDetection
+          onPoseDetected={handlePoseDetected}
+          fullscreen={true}
+          overlayContent={renderCalibrationOverlay()}
+        />
       )}
     </div>
   );

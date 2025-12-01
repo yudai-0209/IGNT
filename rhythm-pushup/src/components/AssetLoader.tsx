@@ -10,13 +10,37 @@ interface AssetLoaderProps {
   imagePaths: string[];
 }
 
+// ゲーム音声ファイルリスト
+const GAME_AUDIO_LIST = [
+  'game_exercise_info',
+  'game_countdown_5',
+  'game_countdown_4',
+  'game_countdown_3',
+  'game_countdown_2',
+  'game_countdown_1',
+  'game_start',
+  'async_posture_prep',
+  'async_exercise_info',
+  'calibration_intro',
+  'show_whole_body',
+  'wrist_below_shoulder',
+  'extend_arms',
+  'bend_arms',
+  'hold_position',
+  'calibration_complete',
+];
+
 const AssetLoader = ({ onLoadComplete, modelPath, musicPath, imagePaths }: AssetLoaderProps) => {
   const [modelProgress, setModelProgress] = useState(0);
   const [musicProgress, setMusicProgress] = useState(0);
   const [imageProgress, setImageProgress] = useState(0);
+  const [countAudioProgress, setCountAudioProgress] = useState(0);
+  const [gameAudioProgress, setGameAudioProgress] = useState(0);
   const [isModelLoaded, setIsModelLoaded] = useState(false);
   const [isMusicLoaded, setIsMusicLoaded] = useState(false);
   const [isImagesLoaded, setIsImagesLoaded] = useState(false);
+  const [isCountAudioLoaded, setIsCountAudioLoaded] = useState(false);
+  const [isGameAudioLoaded, setIsGameAudioLoaded] = useState(false);
 
   // 3Dモデルのロード（GLTFLoaderを直接使用）
   useEffect(() => {
@@ -133,17 +157,98 @@ const AssetLoader = ({ onLoadComplete, modelPath, musicPath, imagePaths }: Asset
     });
   }, [imagePaths]);
 
+  // カウント音声のプリロード（1.mp3〜30.mp3）
+  useEffect(() => {
+    const totalCount = 30;
+    let loadedCount = 0;
+    const preloadedAudios: { [key: number]: HTMLAudioElement } = {};
+
+    for (let i = 1; i <= totalCount; i++) {
+      const audio = new Audio();
+      audio.preload = 'auto';
+
+      audio.addEventListener('canplaythrough', () => {
+        loadedCount++;
+        const percent = (loadedCount / totalCount) * 100;
+        setCountAudioProgress(percent);
+        preloadedAudios[i] = audio;
+
+        if (loadedCount === totalCount) {
+          // グローバルにキャッシュ
+          (window as any).__preloadedCountAudios = preloadedAudios;
+          setIsCountAudioLoaded(true);
+          console.log('カウント音声ロード完了');
+        }
+      }, { once: true });
+
+      audio.addEventListener('error', () => {
+        loadedCount++;
+        const percent = (loadedCount / totalCount) * 100;
+        setCountAudioProgress(percent);
+        console.error(`カウント音声 ${i}.mp3 のロード失敗`);
+
+        if (loadedCount === totalCount) {
+          (window as any).__preloadedCountAudios = preloadedAudios;
+          setIsCountAudioLoaded(true);
+        }
+      }, { once: true });
+
+      audio.src = `/sounds/${i}.mp3`;
+    }
+  }, []);
+
+  // ゲーム音声のプリロード
+  useEffect(() => {
+    const totalCount = GAME_AUDIO_LIST.length;
+    let loadedCount = 0;
+    const preloadedAudios: { [key: string]: HTMLAudioElement } = {};
+
+    GAME_AUDIO_LIST.forEach((name) => {
+      const audio = new Audio();
+      audio.preload = 'auto';
+
+      audio.addEventListener('canplaythrough', () => {
+        loadedCount++;
+        const percent = (loadedCount / totalCount) * 100;
+        setGameAudioProgress(percent);
+        preloadedAudios[name] = audio;
+
+        if (loadedCount === totalCount) {
+          (window as any).__preloadedGameAudios = preloadedAudios;
+          setIsGameAudioLoaded(true);
+          console.log('ゲーム音声ロード完了');
+        }
+      }, { once: true });
+
+      audio.addEventListener('error', () => {
+        loadedCount++;
+        const percent = (loadedCount / totalCount) * 100;
+        setGameAudioProgress(percent);
+        console.error(`ゲーム音声 ${name}.mp3 のロード失敗`);
+
+        if (loadedCount === totalCount) {
+          (window as any).__preloadedGameAudios = preloadedAudios;
+          setIsGameAudioLoaded(true);
+        }
+      }, { once: true });
+
+      audio.src = `/sounds/${name}.mp3`;
+    });
+  }, []);
+
   // 全てロード完了したらコールバック
   useEffect(() => {
-    if (isModelLoaded && isMusicLoaded && isImagesLoaded) {
+    if (isModelLoaded && isMusicLoaded && isImagesLoaded && isCountAudioLoaded && isGameAudioLoaded) {
       console.log('全アセットロード完了');
       setTimeout(() => {
         onLoadComplete();
       }, 300);
     }
-  }, [isModelLoaded, isMusicLoaded, isImagesLoaded, onLoadComplete]);
+  }, [isModelLoaded, isMusicLoaded, isImagesLoaded, isCountAudioLoaded, isGameAudioLoaded, onLoadComplete]);
 
-  const totalProgress = (modelProgress + musicProgress + imageProgress) / 3;
+  // 表示と一致: 3Dモデル、音楽(3種統合)、イラスト
+  const audioProgress = (musicProgress + countAudioProgress + gameAudioProgress) / 3;
+  const totalProgress = (modelProgress + audioProgress + imageProgress) / 3;
 
   return (
     <div className="asset-loader">
@@ -168,12 +273,12 @@ const AssetLoader = ({ onLoadComplete, modelPath, musicPath, imagePaths }: Asset
           <div className="progress-item">
             <div className="progress-label">
               <span>音楽</span>
-              <span>{Math.round(musicProgress)}%</span>
+              <span>{Math.round((musicProgress + countAudioProgress + gameAudioProgress) / 3)}%</span>
             </div>
             <div className="total-progress-bar-container" style={{ height: '12px' }}>
               <div
                 className="total-progress-bar"
-                style={{ width: `${musicProgress}%` }}
+                style={{ width: `${(musicProgress + countAudioProgress + gameAudioProgress) / 3}%` }}
               />
             </div>
           </div>

@@ -261,3 +261,95 @@
   padding: 1vmin 2vmin;
   border-radius: 1vmin;
 }
+
+/* 残り時間ゲージ */
+.time-gauge-container {
+  position: absolute;
+  top: 2vmin;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 50%;
+  max-width: 300px;
+  height: 2.5vmin;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 1.5vmin;
+  overflow: hidden;
+  z-index: 10;
+  border: 0.4vmin solid rgba(255, 255, 255, 0.3);
+  display: flex;
+  justify-content: flex-end; /* 右寄せで左から減る */
+}
+
+.time-gauge-bar {
+  height: 100%;
+  background: linear-gradient(90deg, #00ccff 0%, #00ff88 100%);
+  border-radius: 1.5vmin;
+  transition: width 0.1s linear;
+  box-shadow: 0 0 1vmin rgba(0, 255, 136, 0.5);
+}
+
+/* 体が見えない時のオーバーレイ */
+.body-not-visible-overlay {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  text-align: center;
+  color: white;
+}
+
+.body-not-visible-overlay h1 {
+  font-size: 5vmin;
+  font-weight: bold;
+  margin: 0.5vmin 0;
+  text-shadow: 0.3vmin 0.3vmin 0.6vmin rgba(0, 0, 0, 0.8);
+}
+
+.body-not-visible-overlay p {
+  font-size: 3vmin;
+  margin-top: 2vmin;
+  color: #aaaaaa;
+  text-shadow: 0.2vmin 0.2vmin 0.4vmin rgba(0, 0, 0, 0.8);
+}
+
+/* 姿勢チェックリストオーバーレイ */
+.posture-checklist-overlay {
+  background: rgba(0, 0, 0, 0.7);
+  padding: 3vmin;
+  border-radius: 2vmin;
+  margin-bottom: 2vmin;
+}
+
+.posture-check-item {
+  padding: 2vmin 3vmin;
+  margin: 1.5vmin 0;
+  border-radius: 1.5vmin;
+  font-size: 4vmin;
+  font-weight: bold;
+  transition: all 0.3s ease;
+}
+
+.posture-check-item.valid {
+  background-color: rgba(0, 255, 0, 0.3);
+  color: #00ff00;
+  text-shadow: 0.1vmin 0.1vmin 0.2vmin rgba(0, 0, 0, 0.8);
+}
+
+.posture-check-item.invalid {
+  background-color: rgba(255, 50, 50, 0.3);
+  color: #ff5555;
+  text-shadow: 0.1vmin 0.1vmin 0.2vmin rgba(0, 0, 0, 0.8);
+  animation: pulse-invalid 1s infinite;
+}
+
+@keyframes pulse-invalid {
+  0%, 100% {
+    background-color: rgba(255, 50, 50, 0.3);
+  }
+  50% {
+    background-color: rgba(255, 50, 50, 0.5);
+  }
+}

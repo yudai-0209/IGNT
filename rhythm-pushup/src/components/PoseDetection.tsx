@@ -6,14 +6,24 @@ import { drawConnectors, drawLandmarks } from '@mediapipe/drawing_utils';
 import type { CalibrationData } from '../types';
 import './PoseDetection.css';
 
+// 姿勢ステータスの型
+export interface PostureStatus {
+  allLandmarksVisible: boolean;  // 全ランドマーク検出
+  wristBelowShoulder: boolean;   // 手首が肩より下
+}
+
 interface PoseDetectionProps {
   onPoseDetected?: (results: Results) => void;
   onPushUpCount?: (count: number) => void;
   onFrameUpdate?: (frame: number) => void;
   onBodyVisibilityChange?: (isVisible: boolean) => void;
+  onPostureStatusChange?: (status: PostureStatus) => void; // 姿勢ステータス変化
   calibrationData?: CalibrationData | null;
   width?: number;
   height?: number;
+  showCamera?: boolean; // カメラ映像を表示するか
+  fullscreen?: boolean; // フルスクリーンモード
+  overlayContent?: React.ReactNode; // オーバーレイに表示するコンテンツ
 }
 
 // 角度計算関数（3点から角度を計算）
@@ -56,7 +66,11 @@ const PoseDetection = ({
   onPushUpCount,
   onFrameUpdate,
   onBodyVisibilityChange,
+  onPostureStatusChange,
   calibrationData,
+  showCamera = true,  // デフォルトは表示（キャリブレーション等）
+  fullscreen = false, // デフォルトは小さい表示
+  overlayContent,     // オーバーレイコンテンツ
 }: PoseDetectionProps) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -81,8 +95,11 @@ const PoseDetection = ({
   const onPushUpCountRef = useRef(onPushUpCount);
   const onFrameUpdateRef = useRef(onFrameUpdate);
   const onBodyVisibilityChangeRef = useRef(onBodyVisibilityChange);
+  const onPostureStatusChangeRef = useRef(onPostureStatusChange);
   const lastVisibilityRef = useRef<boolean | null>(null);
+  const lastPostureStatusRef = useRef<PostureStatus | null>(null);
   const invisibleFrameCountRef = useRef<number>(0);
+  const invalidPostureFrameCountRef = useRef<number>(0);
   const INVISIBLE_THRESHOLD_FRAMES = 15; // 約0.5秒間見えない状態が続いたら通知
 
   // しきい値（キャリブレーションデータがあれば15度内側、なければデフォルト値）
@@ -95,6 +112,7 @@ const PoseDetection = ({
     onPushUpCountRef.current = onPushUpCount;
     onFrameUpdateRef.current = onFrameUpdate;
     onBodyVisibilityChangeRef.current = onBodyVisibilityChange;
+    onPostureStatusChangeRef.current = onPostureStatusChange;
   });
 
   // キャリブレーションデータから閾値を設定
@@ -196,10 +214,35 @@ const PoseDetection = ({
           landmark => landmark.visibility && landmark.visibility > 0.3
         );
 
-        if (allVisible) {
+        // 手首が肩より下かチェック（Y座標が大きい方が下）
+        const avgWristY = (leftWrist.y + rightWrist.y) / 2;
+        const avgShoulderY = (leftShoulder.y + rightShoulder.y) / 2;
+        const wristBelowShoulder = avgWristY > avgShoulderY;
+
+        // 姿勢ステータスを作成
+        const currentPostureStatus: PostureStatus = {
+          allLandmarksVisible: allVisible,
+          wristBelowShoulder: allVisible ? wristBelowShoulder : false
+        };
+
+        // 姿勢ステータスが変化した場合のみ通知
+        if (lastPostureStatusRef.current === null ||
+            lastPostureStatusRef.current.allLandmarksVisible !== currentPostureStatus.allLandmarksVisible ||
+            lastPostureStatusRef.current.wristBelowShoulder !== currentPostureStatus.wristBelowShoulder) {
+          lastPostureStatusRef.current = currentPostureStatus;
+          if (onPostureStatusChangeRef.current) {
+            onPostureStatusChangeRef.current(currentPostureStatus);
+          }
+        }
+
+        // 全条件が満たされているかどうか
+        const isPostureValid = allVisible && wristBelowShoulder;
+
+        if (isPostureValid) {
           setIsPositionValid(true);
-          // 見えるようになったらカウンターをリセット
+          // 有効になったらカウンターをリセット
           invisibleFrameCountRef.current = 0;
+          invalidPostureFrameCountRef.current = 0;
           // 可視性が変化した場合のみコールバックを呼ぶ（即座に通知）
           if (lastVisibilityRef.current !== true) {
             lastVisibilityRef.current = true;
@@ -246,13 +289,13 @@ const PoseDetection = ({
             setCurrentState('up');
           }
         } else {
-          // ランドマークが見えない場合
+          // 姿勢が無効な場合
           setIsPositionValid(false);
           setCurrentAngle(0);
-          // 連続で見えないフレーム数をカウント
-          invisibleFrameCountRef.current += 1;
-          // 一定フレーム数連続で見えない場合のみ通知（デバウンス）
-          if (invisibleFrameCountRef.current >= INVISIBLE_THRESHOLD_FRAMES) {
+          // 連続で無効なフレーム数をカウント
+          invalidPostureFrameCountRef.current += 1;
+          // 一定フレーム数連続で無効な場合のみ通知（デバウンス）
+          if (invalidPostureFrameCountRef.current >= INVISIBLE_THRESHOLD_FRAMES) {
             if (lastVisibilityRef.current !== false) {
               lastVisibilityRef.current = false;
               if (onBodyVisibilityChangeRef.current) {
@@ -309,18 +352,26 @@ const PoseDetection = ({
     };
   }, [orientation]); // orientation変更時にカメラを再起動
 
-  // 表示用のサイズを計算（最大幅25vw、アスペクト比維持）
-  const displayWidth = Math.min(window.innerWidth * 0.25, 320);
+  // 表示用のサイズを計算
+  const displayWidth = fullscreen ? '100%' : `${Math.min(window.innerWidth * 0.25, 320)}px`;
   const aspectRatio = cameraSize.height / cameraSize.width;
-  const displayHeight = displayWidth * aspectRatio;
+  const displayHeight = fullscreen ? '100%' : `${Math.min(window.innerWidth * 0.25, 320) * aspectRatio}px`;
+
+  // 未使用変数警告を防ぐ
+  void pushUpCount;
+  void currentState;
+  void currentAngle;
+  void isPositionValid;
 
   return (
     <div
       ref={containerRef}
-      className="pose-detection-container"
+      className={`pose-detection-container ${fullscreen ? 'pose-fullscreen' : ''}`}
       style={{
-        width: `${displayWidth}px`,
-        height: `${displayHeight}px`,
+        width: displayWidth,
+        height: displayHeight,
+        opacity: showCamera ? 1 : 0,
+        transition: 'opacity 0.3s ease',
       }}
     >
       <video
@@ -337,16 +388,11 @@ const PoseDetection = ({
         width={cameraSize.width}
         height={cameraSize.height}
       />
-      <div className="pose-debug-info">
-        {!isPositionValid && (
-          <div style={{ color: '#ff3333', fontWeight: 'bold' }}>
-            両腕を画面内に入れてください
-          </div>
-        )}
-        <div>カウント: {pushUpCount}</div>
-        <div>状態: {currentState === 'up' ? '上' : currentState === 'down' ? '下' : '不明'}</div>
-        <div>角度: {currentAngle}°</div>
-      </div>
+      {overlayContent && (
+        <div className="pose-overlay-content">
+          {overlayContent}
+        </div>
+      )}
     </div>
   );
 };

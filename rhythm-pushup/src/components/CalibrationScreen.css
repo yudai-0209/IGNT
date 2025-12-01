@@ -269,3 +269,184 @@
     box-shadow: 0 0 3vmin rgba(0, 255, 170, 1);
   }
 }
+
+/* ====== フルスクリーンカメラ用オーバーレイスタイル ====== */
+
+.calibration-overlay {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  padding: 5vmin 3vmin;
+  box-sizing: border-box;
+}
+
+.calibration-overlay-centered {
+  justify-content: center;
+  align-items: center;
+}
+
+/* ステップラベル */
+.calibration-step-label {
+  background: rgba(0, 0, 0, 0.5);
+  padding: 2vmin 4vmin;
+  border-radius: 2vmin;
+  font-size: 4vmin;
+  font-weight: bold;
+  color: #00ff00;
+  text-shadow: 0.2vmin 0.2vmin 0.4vmin rgba(0, 0, 0, 0.8);
+  margin-bottom: 3vmin;
+  text-align: center;
+}
+
+/* 達成済み条件（小さく表示） */
+.calibration-completed-conditions {
+  display: flex;
+  gap: 2vmin;
+  justify-content: center;
+  margin-bottom: 3vmin;
+  flex-wrap: wrap;
+}
+
+.completed-badge {
+  background: rgba(0, 255, 0, 0.3);
+  color: #00ff00;
+  padding: 1vmin 2vmin;
+  border-radius: 1vmin;
+  font-size: 3vmin;
+  font-weight: bold;
+  text-shadow: 0.1vmin 0.1vmin 0.2vmin rgba(0, 0, 0, 0.8);
+}
+
+/* 未達成条件（大きく強調） */
+.calibration-pending-conditions {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+}
+
+.pending-condition {
+  background: rgba(0, 0, 0, 0.6);
+  padding: 4vmin;
+  border-radius: 3vmin;
+  text-align: center;
+  animation: pending-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pending-pulse {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 0 2vmin rgba(255, 100, 100, 0.5);
+  }
+  50% {
+    transform: scale(1.02);
+    box-shadow: 0 0 4vmin rgba(255, 100, 100, 0.8);
+  }
+}
+
+.pending-icon {
+  font-size: 15vmin;
+  margin-bottom: 2vmin;
+}
+
+.pending-text {
+  font-size: 5vmin;
+  font-weight: bold;
+  color: white;
+  text-shadow: 0.2vmin 0.2vmin 0.4vmin rgba(0, 0, 0, 0.8);
+  margin-bottom: 1vmin;
+}
+
+.pending-detail {
+  font-size: 3.5vmin;
+  color: #ffcc00;
+  text-shadow: 0.1vmin 0.1vmin 0.3vmin rgba(0, 0, 0, 0.8);
+}
+
+/* 円形プログレス */
+.circular-progress-container {
+  position: relative;
+  width: 50vmin;
+  height: 50vmin;
+  margin-bottom: 3vmin;
+}
+
+.circular-progress {
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+}
+
+.circular-progress-bg {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.2);
+  stroke-width: 8;
+}
+
+.circular-progress-fill {
+  fill: none;
+  stroke: #00ff00;
+  stroke-width: 8;
+  stroke-linecap: round;
+  transition: stroke-dashoffset 0.1s linear;
+  filter: drop-shadow(0 0 1vmin rgba(0, 255, 0, 0.8));
+}
+
+.circular-progress-text {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 20vmin;
+  font-weight: bold;
+  color: white;
+  text-shadow: 0 0 3vmin rgba(0, 255, 0, 0.8);
+}
+
+.calibration-hold-message {
+  font-size: 12vmin;
+  font-weight: bold;
+  color: #ffcc00;
+  text-shadow:
+    0 0 3vmin rgba(255, 200, 0, 0.8),
+    0.3vmin 0.3vmin 0.6vmin rgba(0, 0, 0, 0.9);
+  animation: hold-pulse 0.5s ease-in-out infinite;
+  letter-spacing: 0.5vmin;
+}
+
+@keyframes hold-pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+/* ゲーム中断時の再開メッセージ */
+.game-resume-message {
+  margin-top: 5vmin;
+  padding: 2vmin 4vmin;
+  background: rgba(0, 0, 0, 0.6);
+  border-radius: 2vmin;
+  font-size: 4vmin;
+  font-weight: bold;
+  color: #00ff00;
+  text-shadow: 0 0 2vmin rgba(0, 255, 0, 0.6);
+  text-align: center;
+  animation: resume-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes resume-pulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.8;
+    transform: scale(1.02);
+  }
+}

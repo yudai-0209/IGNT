@@ -11,6 +11,20 @@
   background-color: rgba(0, 0, 0, 0.8);
 }
 
+/* フルスクリーンモード */
+.pose-detection-container.pose-fullscreen {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100% !important;
+  height: 100% !important;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+}
+
 .pose-video {
   position: absolute;
   top: 0;
@@ -35,16 +49,22 @@
   transform: scaleX(-1); /* 鏡像表示 */
 }
 
-.pose-debug-info {
-  position: relative;
-  z-index: 3;
-  padding: 8px;
-  color: #ffffff;
-  font-size: 12px;
-  font-weight: bold;
-  background-color: rgba(0, 0, 0, 0.7);
+/* オーバーレイコンテンツ */
+.pose-overlay-content {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 10;
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  padding: 3vmin;
+  box-sizing: border-box;
 }
 
-.pose-debug-info div {
-  margin: 2px 0;
+.pose-overlay-content > * {
+  pointer-events: auto;
 }

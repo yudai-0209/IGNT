@@ -1,8 +1,27 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import './AsyncGameScreen.css';
+import './CalibrationScreen.css';
 import PoseDetection from './PoseDetection';
+import type { PostureStatus } from './PoseDetection';
 import { useWakeLock } from '../hooks/useWakeLock';
 import type { CalibrationData } from '../types';
+
+// 中断時の音声ファイルのパス（キャリブレーションと共通）
+const INTERRUPTION_AUDIO_FILES = {
+  showWholeBody: '/sounds/show_whole_body.mp3',
+  wristBelowShoulder: '/sounds/wrist_below_shoulder.mp3',
+};
+
+// ゲーム開始時の音声ファイル
+const GAME_AUDIO_FILES = {
+  exerciseInfo: '/sounds/game_exercise_info.mp3',
+  countdown5: '/sounds/game_countdown_5.mp3',
+  countdown4: '/sounds/game_countdown_4.mp3',
+  countdown3: '/sounds/game_countdown_3.mp3',
+  countdown2: '/sounds/game_countdown_2.mp3',
+  countdown1: '/sounds/game_countdown_1.mp3',
+  start: '/sounds/game_start.mp3',
+};
 
 // イージング関数
 const easeInCubic = (t: number): number => t * t * t;
@@ -56,15 +75,29 @@ const GameScreen = ({
   const [isGameCleared, setIsGameCleared] = useState<boolean>(false);
   const [isPaused, setIsPaused] = useState<boolean>(false);
   const [isBodyNotVisible, setIsBodyNotVisible] = useState<boolean>(false);
+  const [postureStatus, setPostureStatus] = useState<PostureStatus>({
+    allLandmarksVisible: true,
+    wristBelowShoulder: true
+  });
   const [currentFrame, setCurrentFrame] = useState<number>(25);
   const [showWarmUpMessage, setShowWarmUpMessage] = useState<boolean>(true);
   const [audioError, setAudioError] = useState<string | null>(null);
   const [currentRep, setCurrentRep] = useState<number>(0);
   const [combo, setCombo] = useState<number>(0);
+  const [timeRemaining, setTimeRemaining] = useState<number>(100); // 残り時間（%）
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const countAudioRef = useRef<HTMLAudioElement | null>(null);
   const animationFrameRef = useRef<number | null>(null);
+
+  // 中断時音声関連
+  const interruptionAudioRefs = useRef<{ [key: string]: HTMLAudioElement }>({});
+  const currentInterruptionAudioRef = useRef<string | null>(null);
+  const lastPlayedInterruptionAudioRef = useRef<string | null>(null);
+
+  // ゲーム開始時音声関連
+  const gameAudioRefs = useRef<{ [key: string]: HTMLAudioElement }>({});
+  const currentGameAudioRef = useRef<HTMLAudioElement | null>(null);
   const startTimeRef = useRef<number | null>(null);
   const gameStartTimeRef = useRef<number | null>(null);
   const pauseTimeRef = useRef<number>(0);
@@ -79,22 +112,162 @@ const GameScreen = ({
 
   useWakeLock(true);
 
-  // カウント音声を再生する関数
+  // 中断時音声ファイルのプリロード
+  useEffect(() => {
+    Object.entries(INTERRUPTION_AUDIO_FILES).forEach(([key, path]) => {
+      const audio = new Audio(path);
+      audio.preload = 'auto';
+      interruptionAudioRefs.current[key] = audio;
+    });
+
+    return () => {
+      Object.values(interruptionAudioRefs.current).forEach(audio => {
+        audio.pause();
+        audio.src = '';
+      });
+    };
+  }, []);
+
+  // ゲーム開始時音声をプリロード済みから取得
+  useEffect(() => {
+    const preloaded = (window as any).__preloadedGameAudios;
+    if (preloaded) {
+      // プリロード済みの音声を使用
+      gameAudioRefs.current = {
+        exerciseInfo: preloaded['game_exercise_info'],
+        countdown5: preloaded['game_countdown_5'],
+        countdown4: preloaded['game_countdown_4'],
+        countdown3: preloaded['game_countdown_3'],
+        countdown2: preloaded['game_countdown_2'],
+        countdown1: preloaded['game_countdown_1'],
+        start: preloaded['game_start'],
+      };
+    } else {
+      // フォールバック：プリロードがない場合は新規作成
+      Object.entries(GAME_AUDIO_FILES).forEach(([key, path]) => {
+        const audio = new Audio(path);
+        audio.preload = 'auto';
+        gameAudioRefs.current[key] = audio;
+      });
+    }
+  }, []);
+
+  // ゲーム音声再生関数（Promiseを返す）
+  const playGameAudio = useCallback((audioKey: string): Promise<void> => {
+    return new Promise((resolve) => {
+      // 現在再生中の音声を停止
+      if (currentGameAudioRef.current) {
+        currentGameAudioRef.current.pause();
+        currentGameAudioRef.current.currentTime = 0;
+      }
+
+      const audio = gameAudioRefs.current[audioKey];
+      if (audio) {
+        currentGameAudioRef.current = audio;
+        audio.currentTime = 0;
+
+        audio.onended = () => {
+          currentGameAudioRef.current = null;
+          resolve();
+        };
+
+        audio.onerror = () => {
+          currentGameAudioRef.current = null;
+          resolve();
+        };
+
+        audio.play().catch(() => {
+          resolve();
+        });
+      } else {
+        resolve();
+      }
+    });
+  }, []);
+
+  // 中断時音声再生関数
+  const playInterruptionAudio = useCallback((audioKey: string) => {
+    // 同じ音声が既に再生中の場合はスキップ
+    if (currentInterruptionAudioRef.current === audioKey) {
+      return;
+    }
+
+    // 前回と同じ音声の場合もスキップ（連続再生防止）
+    if (lastPlayedInterruptionAudioRef.current === audioKey) {
+      return;
+    }
+
+    // 現在再生中の音声を停止
+    if (currentInterruptionAudioRef.current && interruptionAudioRefs.current[currentInterruptionAudioRef.current]) {
+      interruptionAudioRefs.current[currentInterruptionAudioRef.current].pause();
+      interruptionAudioRefs.current[currentInterruptionAudioRef.current].currentTime = 0;
+    }
+
+    // 新しい音声を再生
+    const audio = interruptionAudioRefs.current[audioKey];
+    if (audio) {
+      currentInterruptionAudioRef.current = audioKey;
+      lastPlayedInterruptionAudioRef.current = audioKey;
+      audio.currentTime = 0;
+      audio.play().catch(err => {
+        console.warn('Interruption audio playback failed:', err);
+      });
+
+      audio.onended = () => {
+        currentInterruptionAudioRef.current = null;
+      };
+    }
+  }, []);
+
+  // 中断時音声を全て停止
+  const stopInterruptionAudio = useCallback(() => {
+    Object.values(interruptionAudioRefs.current).forEach(audio => {
+      audio.pause();
+      audio.currentTime = 0;
+    });
+    currentInterruptionAudioRef.current = null;
+  }, []);
+
+  // 中断状態に応じた音声再生
+  useEffect(() => {
+    if (isBodyNotVisible && !isPaused) {
+      // 条件に応じて音声を再生
+      if (!postureStatus.allLandmarksVisible) {
+        playInterruptionAudio('showWholeBody');
+      } else if (!postureStatus.wristBelowShoulder) {
+        playInterruptionAudio('wristBelowShoulder');
+      }
+    } else {
+      // 中断解除時はリセット
+      stopInterruptionAudio();
+      lastPlayedInterruptionAudioRef.current = null;
+    }
+  }, [isBodyNotVisible, isPaused, postureStatus, playInterruptionAudio, stopInterruptionAudio]);
+
+  // カウント音声を再生する関数（プリロード済み音声を使用）
   const playCountAudio = (count: number) => {
     if (count < 1 || count > 30) return;
+
+    // プリロード済み音声を取得
+    const preloadedAudios = (window as any).__preloadedCountAudios;
+    if (!preloadedAudios || !preloadedAudios[count]) {
+      console.warn(`カウント音声 ${count} がプリロードされていません`);
+      return;
+    }
 
     // 前の音声が再生中なら停止
     if (countAudioRef.current) {
       countAudioRef.current.pause();
-      countAudioRef.current = null;
+      countAudioRef.current.currentTime = 0;
     }
 
-    // 新しい音声を作成して再生
-    const audio = new Audio(`/sounds/${count}.mp3`);
-    audio.volume = 0.8; // BGMより少し小さめ
+    // プリロード済み音声を使用
+    const audio = preloadedAudios[count];
+    audio.currentTime = 0;
+    audio.volume = 0.8;
     countAudioRef.current = audio;
 
-    audio.play().catch((error) => {
+    audio.play().catch((error: Error) => {
       console.error(`カウント音声(${count})の再生に失敗:`, error);
     });
   };
@@ -117,49 +290,75 @@ const GameScreen = ({
     }
   }, []);
 
-  // 筋トレ説明画面（5秒間表示）
+  // 筋トレ説明画面（音声再生後に次へ）
   useEffect(() => {
     if (!showExerciseInfo) return;
 
-    const timer = setTimeout(() => {
-      setShowExerciseInfo(false);
-      countdownStartTimeRef.current = performance.now();
-    }, 5000);
+    let isCancelled = false;
 
-    return () => clearTimeout(timer);
-  }, [showExerciseInfo]);
+    const playAndAdvance = async () => {
+      await playGameAudio('exerciseInfo');
+      // 音声終了後に少し待ってから次へ
+      await new Promise(resolve => setTimeout(resolve, 500));
+      if (!isCancelled) {
+        setShowExerciseInfo(false);
+        countdownStartTimeRef.current = performance.now();
+      }
+    };
 
-  // ゲームカウントダウン処理（5秒）
+    playAndAdvance();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [showExerciseInfo, playGameAudio]);
+
+  // カウントダウン音声再生用のref
+  const lastPlayedCountdownRef = useRef<number>(-1);
+
+  // ゲームカウントダウン処理（音声付き）
   useEffect(() => {
     if (!modelReady || showExerciseInfo) return;
 
     let frameId: number;
+    let isCancelled = false;
 
-    const checkCountdown = () => {
-      if (!countdownStartTimeRef.current) return;
+    const checkCountdown = async () => {
+      if (!countdownStartTimeRef.current || isCancelled) return;
 
       const elapsed = performance.now() - countdownStartTimeRef.current;
       const newCountdown = Math.max(0, 5 - Math.floor(elapsed / 1000));
 
-      if (newCountdown !== countdown) {
+      // カウントダウン音声を再生（同じ数字は1回だけ）
+      if (newCountdown !== lastPlayedCountdownRef.current && newCountdown > 0) {
+        lastPlayedCountdownRef.current = newCountdown;
         setCountdown(newCountdown);
+        const audioKey = `countdown${newCountdown}` as keyof typeof GAME_AUDIO_FILES;
+        playGameAudio(audioKey);
       }
 
       if (newCountdown > 0) {
         frameId = requestAnimationFrame(checkCountdown);
-      } else if (newCountdown === 0) {
-        setIsGameStarted(true);
+      } else if (newCountdown === 0 && lastPlayedCountdownRef.current !== 0) {
+        // 「スタート！」音声を再生してからゲーム開始
+        lastPlayedCountdownRef.current = 0;
+        setCountdown(0);
+        await playGameAudio('start');
+        if (!isCancelled) {
+          setIsGameStarted(true);
+        }
       }
     };
 
     frameId = requestAnimationFrame(checkCountdown);
 
     return () => {
+      isCancelled = true;
       if (frameId) {
         cancelAnimationFrame(frameId);
       }
     };
-  }, [countdown, modelReady, showExerciseInfo]);
+  }, [modelReady, showExerciseInfo, playGameAudio]);
 
   // フレーム更新を直接App.tsxへ通知（差分が小さい時はスキップしてガタつき防止）
   const lastFrameRef = useRef<number>(25);
@@ -222,6 +421,17 @@ const GameScreen = ({
 
       if (musicTime >= 3000 && showWarmUpMessage) {
         setShowWarmUpMessage(false);
+      }
+
+      // 残り時間ゲージの計算（最初の4秒は100%のまま、その後60秒で0%に）
+      const WARMUP_TIME = 4000; // 最初の4秒
+      const ACTIVE_DURATION = 60000; // 実際のゲーム時間60秒
+      if (musicTime <= WARMUP_TIME) {
+        setTimeRemaining(100);
+      } else {
+        const activeTime = musicTime - WARMUP_TIME;
+        const remaining = Math.max(0, 100 - (activeTime / ACTIVE_DURATION) * 100);
+        setTimeRemaining(remaining);
       }
 
       if (musicTime >= GAME_DURATION) {
@@ -389,6 +599,11 @@ const GameScreen = ({
     repCountRef.current = count;
   };
 
+  // 姿勢ステータス変化ハンドラ
+  const handlePostureStatusChange = (status: PostureStatus) => {
+    setPostureStatus(status);
+  };
+
   // 体の可視性変化ハンドラ
   const handleBodyVisibilityChange = (isVisible: boolean) => {
     if (!isGameStarted || isGameCleared || isPaused) return;
@@ -449,7 +664,7 @@ const GameScreen = ({
       {showExerciseInfo && (
         <div className="async-countdown-overlay async-exercise-info">
           <h1 className="async-countdown-title">今からリズムに合わせて</h1>
-          <h1 className="async-countdown-title">腕立てをします</h1>
+          <h1 className="async-countdown-title">１分間腕立てをします</h1>
           <p className="async-exercise-tip">きつくなったら膝をついてもOK！</p>
         </div>
       )}
@@ -470,6 +685,13 @@ const GameScreen = ({
       {isGameStarted && !isGameCleared && (
         <>
           <button className="async-pause-button" onClick={handlePause}>⏸</button>
+          {/* 残り時間ゲージ */}
+          <div className="time-gauge-container">
+            <div
+              className="time-gauge-bar"
+              style={{ width: `${timeRemaining}%` }}
+            />
+          </div>
           {!showWarmUpMessage && (
             <>
               <div className="async-rep-counter">
@@ -501,20 +723,9 @@ const GameScreen = ({
         </div>
       )}
 
-      {/* 体が見えない時の自動一時停止 */}
-      {isBodyNotVisible && !isPaused && (
-        <div className="async-countdown-overlay">
-          <h1 className="async-countdown-title">カメラの中に</h1>
-          <h1 className="async-countdown-title">全身を入れてください</h1>
-          <p className="async-countdown-text">
-            体が検出されると自動的に再開します
-          </p>
-        </div>
-      )}
-
       {isGameCleared && (
         <div className="async-countdown-overlay">
-          <h1 className="async-countdown-title">ゲームクリア！</h1>
+          <h1 className="async-countdown-title">終了～！</h1>
           <p className="async-countdown-text">お疲れ様でした！</p>
         </div>
       )}
@@ -556,6 +767,33 @@ const GameScreen = ({
           onFrameUpdate={handleFrameUpdate}
           onPushUpCount={handlePushUpCount}
           onBodyVisibilityChange={handleBodyVisibilityChange}
+          onPostureStatusChange={handlePostureStatusChange}
+          showCamera={isBodyNotVisible}
+          fullscreen={isBodyNotVisible}
+          overlayContent={isBodyNotVisible && !isPaused ? (
+            <div className="calibration-overlay calibration-overlay-centered">
+              <div className="calibration-step-label">ゲーム一時停止中</div>
+              <div className="calibration-completed-conditions">
+                {postureStatus.allLandmarksVisible && <span className="completed-badge">✓ 全身</span>}
+                {postureStatus.wristBelowShoulder && <span className="completed-badge">✓ 手首</span>}
+              </div>
+              <div className="calibration-pending-conditions">
+                {!postureStatus.allLandmarksVisible && (
+                  <div className="pending-condition">
+                    <div className="pending-icon">👤</div>
+                    <div className="pending-text">全身をカメラに映してください</div>
+                  </div>
+                )}
+                {!postureStatus.wristBelowShoulder && postureStatus.allLandmarksVisible && (
+                  <div className="pending-condition">
+                    <div className="pending-icon">✋</div>
+                    <div className="pending-text">手首を肩より下に</div>
+                  </div>
+                )}
+              </div>
+              <div className="game-resume-message">条件を満たすと自動的に再開します</div>
+            </div>
+          ) : undefined}
         />
       )}
     </div>

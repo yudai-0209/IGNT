@@ -1,8 +1,20 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import './AsyncGameScreen.css';
 import PushUpModel from './PushUpModel';
 import AssetLoader from './AssetLoader';
 import { useWakeLock } from '../hooks/useWakeLock';
+
+// 非同期モード用の音声ファイル
+const ASYNC_AUDIO_FILES = {
+  posturePrep: '/sounds/async_posture_prep.mp3',
+  exerciseInfo: '/sounds/async_exercise_info.mp3',
+  countdown5: '/sounds/game_countdown_5.mp3',
+  countdown4: '/sounds/game_countdown_4.mp3',
+  countdown3: '/sounds/game_countdown_3.mp3',
+  countdown2: '/sounds/game_countdown_2.mp3',
+  countdown1: '/sounds/game_countdown_1.mp3',
+  start: '/sounds/game_start.mp3',
+};
 
 // イージング関数
 const easeInCubic = (t: number): number => t * t * t;
@@ -48,6 +60,11 @@ const AsyncGameScreen = ({ onBackToStart }: AsyncGameScreenProps) => {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const countAudioRef = useRef<HTMLAudioElement | null>(null);
   const countAudioPlayedRef = useRef<boolean>(false); // このサイクルで音声再生済みか
+
+  // 非同期モード音声関連
+  const asyncAudioRefs = useRef<{ [key: string]: HTMLAudioElement }>({});
+  const currentAsyncAudioRef = useRef<HTMLAudioElement | null>(null);
+  const lastPlayedCountdownRef = useRef<number>(-1);
   const animationFrameRef = useRef<number | null>(null);
   const startTimeRef = useRef<number | null>(null);
   const gameStartTimeRef = useRef<number | null>(null);
@@ -60,22 +77,88 @@ const AsyncGameScreen = ({ onBackToStart }: AsyncGameScreenProps) => {
   // 画面スリープを防止（ゲーム画面にいる間は常に有効）
   useWakeLock(true);
 
-  // カウント音声を再生する関数
+  // 非同期モード音声をプリロード済みから取得
+  useEffect(() => {
+    const preloaded = (window as any).__preloadedGameAudios;
+    if (preloaded) {
+      // プリロード済みの音声を使用
+      asyncAudioRefs.current = {
+        posturePrep: preloaded['async_posture_prep'],
+        exerciseInfo: preloaded['async_exercise_info'],
+        countdown5: preloaded['game_countdown_5'],
+        countdown4: preloaded['game_countdown_4'],
+        countdown3: preloaded['game_countdown_3'],
+        countdown2: preloaded['game_countdown_2'],
+        countdown1: preloaded['game_countdown_1'],
+        start: preloaded['game_start'],
+      };
+    } else {
+      // フォールバック：プリロードがない場合は新規作成
+      Object.entries(ASYNC_AUDIO_FILES).forEach(([key, path]) => {
+        const audio = new Audio(path);
+        audio.preload = 'auto';
+        asyncAudioRefs.current[key] = audio;
+      });
+    }
+  }, []);
+
+  // 非同期モード音声再生関数（Promiseを返す）
+  const playAsyncAudio = useCallback((audioKey: string): Promise<void> => {
+    return new Promise((resolve) => {
+      // 現在再生中の音声を停止
+      if (currentAsyncAudioRef.current) {
+        currentAsyncAudioRef.current.pause();
+        currentAsyncAudioRef.current.currentTime = 0;
+      }
+
+      const audio = asyncAudioRefs.current[audioKey];
+      if (audio) {
+        currentAsyncAudioRef.current = audio;
+        audio.currentTime = 0;
+
+        audio.onended = () => {
+          currentAsyncAudioRef.current = null;
+          resolve();
+        };
+
+        audio.onerror = () => {
+          currentAsyncAudioRef.current = null;
+          resolve();
+        };
+
+        audio.play().catch(() => {
+          resolve();
+        });
+      } else {
+        resolve();
+      }
+    });
+  }, []);
+
+  // カウント音声を再生する関数（プリロード済み音声を使用）
   const playCountAudio = (count: number) => {
     if (count < 1 || count > 30) return;
+
+    // プリロード済み音声を取得
+    const preloadedAudios = (window as any).__preloadedCountAudios;
+    if (!preloadedAudios || !preloadedAudios[count]) {
+      console.warn(`カウント音声 ${count} がプリロードされていません`);
+      return;
+    }
 
     // 前の音声が再生中なら停止
     if (countAudioRef.current) {
       countAudioRef.current.pause();
-      countAudioRef.current = null;
+      countAudioRef.current.currentTime = 0;
     }
 
-    // 新しい音声を作成して再生
-    const audio = new Audio(`/sounds/${count}.mp3`);
-    audio.volume = 0.8; // BGMより少し小さめ
+    // プリロード済み音声を使用
+    const audio = preloadedAudios[count];
+    audio.currentTime = 0;
+    audio.volume = 0.8;
     countAudioRef.current = audio;
 
-    audio.play().catch((error) => {
+    audio.play().catch((error: Error) => {
       console.error(`カウント音声(${count})の再生に失敗:`, error);
     });
   };
@@ -126,61 +209,93 @@ const AsyncGameScreen = ({ onBackToStart }: AsyncGameScreenProps) => {
     }, 1000);
   };
 
-  // 姿勢準備画面（5秒間表示）
+  // 姿勢準備画面（音声再生後に次へ）
   useEffect(() => {
     if (!showPosturePrep) return;
 
-    const timer = setTimeout(() => {
-      setShowPosturePrep(false);
-      setShowExerciseInfo(true);
-    }, 5000);
+    let isCancelled = false;
 
-    return () => clearTimeout(timer);
-  }, [showPosturePrep]);
+    const playAndAdvance = async () => {
+      await playAsyncAudio('posturePrep');
+      await new Promise(resolve => setTimeout(resolve, 500));
+      if (!isCancelled) {
+        setShowPosturePrep(false);
+        setShowExerciseInfo(true);
+      }
+    };
 
-  // 筋トレ説明画面（5秒間表示）
+    playAndAdvance();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [showPosturePrep, playAsyncAudio]);
+
+  // 筋トレ説明画面（音声再生後に次へ）
   useEffect(() => {
     if (!showExerciseInfo) return;
 
-    const timer = setTimeout(() => {
-      setShowExerciseInfo(false);
-      countdownStartTimeRef.current = performance.now();
-    }, 5000);
+    let isCancelled = false;
 
-    return () => clearTimeout(timer);
-  }, [showExerciseInfo]);
+    const playAndAdvance = async () => {
+      await playAsyncAudio('exerciseInfo');
+      await new Promise(resolve => setTimeout(resolve, 500));
+      if (!isCancelled) {
+        setShowExerciseInfo(false);
+        countdownStartTimeRef.current = performance.now();
+      }
+    };
 
-  // ゲームカウントダウン処理（5秒）
+    playAndAdvance();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [showExerciseInfo, playAsyncAudio]);
+
+  // ゲームカウントダウン処理（音声付き）
   useEffect(() => {
     if (isLoading || !isModelReady || showReady || showPosturePrep || showExerciseInfo) return;
 
     let frameId: number;
+    let isCancelled = false;
 
-    const checkCountdown = () => {
-      if (!countdownStartTimeRef.current) return;
+    const checkCountdown = async () => {
+      if (!countdownStartTimeRef.current || isCancelled) return;
 
       const elapsed = performance.now() - countdownStartTimeRef.current;
       const newCountdown = Math.max(0, 5 - Math.floor(elapsed / 1000));
 
-      if (newCountdown !== countdown) {
+      // カウントダウン音声を再生（同じ数字は1回だけ）
+      if (newCountdown !== lastPlayedCountdownRef.current && newCountdown > 0) {
+        lastPlayedCountdownRef.current = newCountdown;
         setCountdown(newCountdown);
+        const audioKey = `countdown${newCountdown}` as keyof typeof ASYNC_AUDIO_FILES;
+        playAsyncAudio(audioKey);
       }
 
       if (newCountdown > 0) {
         frameId = requestAnimationFrame(checkCountdown);
-      } else if (newCountdown === 0) {
-        setIsGameStarted(true);
+      } else if (newCountdown === 0 && lastPlayedCountdownRef.current !== 0) {
+        // 「スタート！」音声を再生してからゲーム開始
+        lastPlayedCountdownRef.current = 0;
+        setCountdown(0);
+        await playAsyncAudio('start');
+        if (!isCancelled) {
+          setIsGameStarted(true);
+        }
       }
     };
 
     frameId = requestAnimationFrame(checkCountdown);
 
     return () => {
+      isCancelled = true;
       if (frameId) {
         cancelAnimationFrame(frameId);
       }
     };
-  }, [countdown, isLoading, isModelReady, showReady, showPosturePrep, showExerciseInfo]);
+  }, [isLoading, isModelReady, showReady, showPosturePrep, showExerciseInfo, playAsyncAudio]);
 
   // 一時停止処理
   useEffect(() => {
