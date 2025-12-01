@@ -27,7 +27,7 @@
   flex-direction: column;
   align-items: center;
   width: 100%;
-  padding: clamp(10px, 2vh, 20px);
+  padding: 2vmin;
 }
 
 .calibration-camera {
@@ -47,41 +47,42 @@
   text-align: center;
   color: white;
   background-color: rgba(0, 0, 0, 0.8);
-  padding: clamp(20px, 4vh, 40px) clamp(30px, 5vw, 60px);
-  border-radius: clamp(8px, 2vw, 16px);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
-  max-width: 90%;
-  width: clamp(280px, 80vw, 600px);
+  padding: 2.5vh 4vw;
+  border-radius: 2vmin;
+  box-shadow: 0 1vmin 3vmin rgba(0, 0, 0, 0.6);
+  max-width: 88vw;
+  max-height: 75vh;
+  overflow-y: auto;
 }
 
 .calibration-content h1 {
-  font-size: clamp(1.5rem, 5vw, 2.5rem);
-  margin-bottom: clamp(10px, 2vh, 20px);
-  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+  font-size: 5vmin;
+  margin-bottom: 1.5vh;
+  text-shadow: 0.3vmin 0.3vmin 0.6vmin rgba(0, 0, 0, 0.5);
 }
 
 .calibration-content h2 {
-  font-size: clamp(1rem, 3vw, 1.5rem);
-  margin-bottom: clamp(5px, 1vh, 10px);
+  font-size: 3.5vmin;
+  margin-bottom: 0.8vh;
   color: #00ff00;
 }
 
 .calibration-content h3 {
-  font-size: clamp(1.2rem, 3.5vw, 1.8rem);
-  margin-bottom: clamp(8px, 1.5vh, 15px);
+  font-size: 3.8vmin;
+  margin-bottom: 1vh;
 }
 
 .calibration-content p {
-  font-size: clamp(0.9rem, 2.5vw, 1.1rem);
-  margin: clamp(3px, 0.5vh, 5px) 0;
-  line-height: 1.6;
+  font-size: 3vmin;
+  margin: 0.3vh 0;
+  line-height: 1.4;
 }
 
 .calibration-buttons {
   display: flex;
-  gap: clamp(10px, 2vw, 20px);
+  gap: 2.5vmin;
   justify-content: center;
-  margin-top: clamp(15px, 3vh, 30px);
+  margin-top: 2vh;
   flex-wrap: wrap;
 }
 
@@ -89,10 +90,10 @@
   background-color: #00ff00;
   color: #000;
   border: none;
-  padding: clamp(10px, 1.5vh, 15px) clamp(25px, 4vw, 40px);
-  font-size: clamp(1rem, 2.5vw, 1.3rem);
+  padding: 1.5vh 4vw;
+  font-size: 3.5vmin;
   font-weight: bold;
-  border-radius: clamp(5px, 1vw, 8px);
+  border-radius: 1.5vmin;
   cursor: pointer;
   transition: all 0.3s;
 }
@@ -106,10 +107,10 @@
   background-color: #666;
   color: #fff;
   border: none;
-  padding: clamp(10px, 1.5vh, 15px) clamp(25px, 4vw, 40px);
-  font-size: clamp(1rem, 2.5vw, 1.3rem);
+  padding: 1.5vh 4vw;
+  font-size: 3.5vmin;
   font-weight: bold;
-  border-radius: clamp(5px, 1vw, 8px);
+  border-radius: 1.5vmin;
   cursor: pointer;
   transition: all 0.3s;
 }
@@ -119,26 +120,26 @@
 }
 
 .angle-display {
-  margin: clamp(15px, 3vh, 30px) 0;
+  margin: 1.5vh 0;
 }
 
 .angle-value {
-  font-size: clamp(2.5rem, 8vw, 4rem);
+  font-size: 8vmin;
   font-weight: bold;
   color: #00ff00;
-  text-shadow: 0 0 20px rgba(0, 255, 0, 0.8);
-  margin-bottom: clamp(8px, 1.5vh, 15px);
+  text-shadow: 0 0 2vmin rgba(0, 255, 0, 0.8);
+  margin-bottom: 1vh;
 }
 
 .angle-warning {
-  font-size: clamp(1rem, 3vw, 1.5rem);
+  font-size: 3vmin;
   color: #ff3333;
   font-weight: bold;
   animation: pulse 1s infinite;
 }
 
 .angle-success {
-  font-size: clamp(1rem, 3vw, 1.5rem);
+  font-size: 3vmin;
   color: #00ff00;
   font-weight: bold;
 }
@@ -154,33 +155,33 @@
 
 .progress-bar {
   width: 100%;
-  height: clamp(12px, 2vh, 20px);
+  height: 2vmin;
   background-color: rgba(255, 255, 255, 0.2);
-  border-radius: clamp(6px, 1vh, 10px);
+  border-radius: 1vmin;
   overflow: hidden;
-  margin-top: clamp(10px, 2vh, 20px);
+  margin-top: 1.2vh;
 }
 
 .progress-fill {
   height: 100%;
   background: linear-gradient(90deg, #00ff00, #00cc00);
   transition: width 0.1s linear;
-  box-shadow: 0 0 10px rgba(0, 255, 0, 0.8);
+  box-shadow: 0 0 1.5vmin rgba(0, 255, 0, 0.8);
 }
 
 .calibration-results {
-  margin: clamp(15px, 3vh, 30px) 0;
+  margin: 3vh 0;
   text-align: left;
 }
 
 .result-item {
   display: flex;
   justify-content: space-between;
-  padding: clamp(8px, 1.5vh, 15px);
-  margin: clamp(5px, 1vh, 10px) 0;
+  padding: 1.5vh 2vw;
+  margin: 1vh 0;
   background-color: rgba(255, 255, 255, 0.1);
-  border-radius: clamp(5px, 1vw, 8px);
-  font-size: clamp(1rem, 2.5vw, 1.3rem);
+  border-radius: 1.5vmin;
+  font-size: 3.5vmin;
 }
 
 .result-item span:first-child {
@@ -193,11 +194,11 @@
 }
 
 .countdown-display {
-  font-size: clamp(3rem, 10vw, 6rem);
+  font-size: 15vmin;
   font-weight: bold;
   color: #00ff00;
-  text-shadow: 0 0 30px rgba(0, 255, 0, 0.9);
-  margin: clamp(20px, 4vh, 40px) 0;
+  text-shadow: 0 0 4vmin rgba(0, 255, 0, 0.9);
+  margin: 4vh 0;
   animation: countdown-pulse 1s ease-in-out infinite;
 }
 
@@ -207,5 +208,64 @@
   }
   50% {
     transform: scale(1.1);
+  }
+}
+
+/* 姿勢チェックリスト */
+.posture-checklist {
+  margin: 1.2vh 0;
+  text-align: left;
+}
+
+.check-item {
+  padding: 0.8vh 1.5vw;
+  margin: 0.5vh 0;
+  border-radius: 0.8vmin;
+  font-size: 2.5vmin;
+  transition: all 0.3s ease;
+}
+
+.check-item.valid {
+  background-color: rgba(0, 255, 0, 0.2);
+  color: #00ff00;
+}
+
+.check-item.invalid {
+  background-color: rgba(255, 50, 50, 0.2);
+  color: #ff5555;
+}
+
+/* 安定時間タイマー */
+.stable-timer {
+  margin: 1.2vh 0;
+  padding: 1vh 1.5vw;
+  background-color: rgba(255, 200, 0, 0.2);
+  border-radius: 1vmin;
+  color: #ffcc00;
+  font-size: 2.8vmin;
+  font-weight: bold;
+}
+
+.stable-timer .progress-bar {
+  margin-top: 1vh;
+}
+
+.stable-timer .progress-fill {
+  background: linear-gradient(90deg, #ffcc00, #ff9900);
+  box-shadow: 0 0 1.5vmin rgba(255, 200, 0, 0.8);
+}
+
+/* 記録中のプログレスバー */
+.progress-fill.recording {
+  background: linear-gradient(90deg, #00ff00, #00ffaa);
+  animation: recording-glow 0.5s ease-in-out infinite alternate;
+}
+
+@keyframes recording-glow {
+  0% {
+    box-shadow: 0 0 1.5vmin rgba(0, 255, 0, 0.8);
+  }
+  100% {
+    box-shadow: 0 0 3vmin rgba(0, 255, 170, 1);
   }
 }

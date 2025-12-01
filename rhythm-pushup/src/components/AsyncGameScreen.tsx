@@ -197,7 +197,9 @@ const AsyncGameScreen = ({ onBackToStart }: AsyncGameScreenProps) => {
         }
       }
 
-      const musicTime = audioRef.current ? (audioRef.current.currentTime * 1000) - musicStartOffsetRef.current : 0;
+      // アニメーションを0.2秒早める（音楽との同期調整）
+      const ANIMATION_OFFSET = 200; // ms
+      const musicTime = audioRef.current ? (audioRef.current.currentTime * 1000) - musicStartOffsetRef.current + ANIMATION_OFFSET : 0;
 
       // 3秒経過したらウォームアップメッセージを非表示
       if (musicTime >= 3000 && showWarmUpMessage) {
@@ -274,8 +276,8 @@ const AsyncGameScreen = ({ onBackToStart }: AsyncGameScreenProps) => {
         // 放射線エフェクト: 500msで発動、500ms間で拡大しながらフェードアウト
         const burstProgress = Math.min((cycleTime - 500) / 500, 1);
         const burstEased = easeOutCubic(burstProgress);
-        setBurstScale(0.5 + burstEased * 1.0); // 0.5 → 1.5
-        setBurstOpacity(0.8 * (1 - burstEased)); // 0.8 → 0
+        setBurstScale(0.5 + burstEased * 1.5); // 0.5 → 2.0（より大きく広がる）
+        setBurstOpacity(1.0 * (1 - burstEased)); // 濃いめの透明度
 
         // 1拍目（下降）から2拍目（静止）に入った瞬間にカウント
         // 最初の4秒（2回分）はカウントしない
@@ -427,7 +429,7 @@ const AsyncGameScreen = ({ onBackToStart }: AsyncGameScreenProps) => {
       )}
       {isModelReady && showPosturePrep && (
         <div className="async-countdown-overlay">
-          <h1 className="async-countdown-title">腕立て伏せの姿勢になってください</h1>
+          <h1 className="async-countdown-title">カメラを正面に、腕立ての姿勢になってください</h1>
         </div>
       )}
       {isModelReady && showExerciseInfo && (
@@ -489,8 +491,8 @@ const AsyncGameScreen = ({ onBackToStart }: AsyncGameScreenProps) => {
       )}
       {audioError && (
         <div className="async-countdown-overlay" style={{ backgroundColor: 'rgba(200, 0, 0, 0.9)' }}>
-          <h1 className="async-countdown-title" style={{ fontSize: '24px' }}>エラー発生</h1>
-          <p className="async-countdown-text" style={{ fontSize: '14px', wordBreak: 'break-all', padding: '0 20px' }}>
+          <h1 className="async-countdown-title">エラー発生</h1>
+          <p className="async-countdown-text" style={{ wordBreak: 'break-all' }}>
             {audioError}
           </p>
           <button
@@ -502,31 +504,15 @@ const AsyncGameScreen = ({ onBackToStart }: AsyncGameScreenProps) => {
                 });
               }
             }}
-            style={{
-              marginTop: '20px',
-              padding: '15px 30px',
-              fontSize: '18px',
-              backgroundColor: '#fff',
-              color: '#c00',
-              border: 'none',
-              borderRadius: '10px',
-              cursor: 'pointer'
-            }}
+            className="async-btn-primary"
+            style={{ marginTop: '2vmin' }}
           >
             タップして再試行
           </button>
           <button
             onClick={onBackToStart}
-            style={{
-              marginTop: '10px',
-              padding: '10px 20px',
-              fontSize: '14px',
-              backgroundColor: 'transparent',
-              color: '#fff',
-              border: '1px solid #fff',
-              borderRadius: '10px',
-              cursor: 'pointer'
-            }}
+            className="async-btn-secondary"
+            style={{ marginTop: '1vmin' }}
           >
             スタートに戻る
           </button>

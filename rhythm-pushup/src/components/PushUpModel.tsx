@@ -69,10 +69,9 @@ const Model = ({ url, currentFrame, onLoad }: { url: string; currentFrame: numbe
     console.log('Available animations:', names);
     console.log('Animation count:', names?.length || 0);
 
-    // Ch38_bodyテクスチャを外部ファイルから読み込む
-    const textureLoader = new THREE.TextureLoader();
-    textureLoader.load('/textures/Ch38_body.png', (bodyTexture) => {
-      console.log('Ch38_body texture loaded successfully');
+    // テクスチャをロードまたはキャッシュから取得
+    const applyTexture = (bodyTexture: THREE.Texture) => {
+      console.log('Applying Ch38_body texture');
       bodyTexture.colorSpace = THREE.SRGBColorSpace;
       bodyTexture.flipY = false; // GLTFはflipY=falseが標準
       bodyTexture.needsUpdate = true;
@@ -132,7 +131,23 @@ const Model = ({ url, currentFrame, onLoad }: { url: string; currentFrame: numbe
       // テクスチャ読み込み完了
       setTextureLoaded(true);
       console.log('Texture applied, model ready');
-    });
+    };
+
+    // キャッシュされたテクスチャがあればそれを使用
+    const cachedTexture = (window as any).__preloadedBodyTexture;
+    if (cachedTexture) {
+      console.log('Using cached body texture');
+      applyTexture(cachedTexture);
+    } else {
+      // なければ新規ロード
+      const textureLoader = new THREE.TextureLoader();
+      textureLoader.load('/textures/Ch38_body.png', (bodyTexture) => {
+        console.log('Ch38_body texture loaded successfully');
+        // キャッシュに保存
+        (window as any).__preloadedBodyTexture = bodyTexture;
+        applyTexture(bodyTexture);
+      });
+    }
 
     // GLBファイルに複数のモデルが含まれている場合、最初の1つだけを表示
     if (scene.children.length > 1) {

@@ -34,19 +34,24 @@
   position: absolute;
   top: 66%;
   left: 52.5%;
-  width: 120vmin;
-  height: 120vmin;
+  width: 200vmin;
+  height: 200vmin;
   transform: translate(-50%, -50%);
-  z-index: 2;
+  z-index: 0;
   pointer-events: none;
   background: repeating-conic-gradient(
     from 0deg,
-    transparent 0deg 12deg,
-    rgba(255, 100, 200, 0.7) 12deg 15deg
+    transparent 0deg 4deg,
+    rgba(255, 60, 150, 0.5) 4deg 7deg,
+    transparent 7deg 10deg,
+    rgba(80, 210, 255, 0.5) 10deg 13deg,
+    transparent 13deg 16deg,
+    rgba(255, 230, 80, 0.5) 16deg 19deg
   );
   border-radius: 50%;
-  mask-image: radial-gradient(circle, transparent 20%, black 25%, black 70%, transparent 75%);
-  -webkit-mask-image: radial-gradient(circle, transparent 20%, black 25%, black 70%, transparent 75%);
+  mask-image: radial-gradient(circle, transparent 10%, black 15%, black 80%, transparent 90%);
+  -webkit-mask-image: radial-gradient(circle, transparent 10%, black 15%, black 80%, transparent 90%);
+  filter: saturate(1.2) brightness(1.0);
 }
 
 .async-model-container {
@@ -62,6 +67,7 @@
   transition: opacity 0.5s ease;
 }
 
+/* オーバーレイ（全ての開始前テキスト用） */
 .async-countdown-overlay {
   position: absolute;
   top: 50%;
@@ -71,64 +77,84 @@
   text-align: center;
   color: white;
   background: rgba(0, 0, 0, 0.7);
-  padding: 3vh 5vw;
-  border-radius: clamp(10px, 2vw, 20px);
-  min-width: 200px;
+  padding: 3vmin 5vmin;
+  border-radius: 2vmin;
+  width: 80vmin;
+  max-width: 90vw;
+  max-height: 80vh;
+  box-sizing: border-box;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
 }
 
+/* タイトルテキスト */
 .async-countdown-title {
-  font-size: clamp(18px, 4vw, 28px);
+  font-size: 4.5vmin;
   font-weight: bold;
-  margin: 0 0 clamp(8px, 1.5vh, 15px) 0;
-  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+  margin: 1vmin 0;
+  text-shadow: 0.3vmin 0.3vmin 0.6vmin rgba(0, 0, 0, 0.8);
+  line-height: 1.3;
+  word-break: keep-all;
+  overflow-wrap: break-word;
+  width: 100%;
 }
 
+/* カウントダウン数字 */
 .async-countdown-display {
-  font-size: clamp(40px, 12vw, 80px);
+  font-size: 20vmin;
   font-weight: bold;
-  margin: clamp(8px, 1.5vh, 15px) 0;
+  margin: 2vmin 0;
   color: #00ff00;
-  text-shadow: 0 0 20px rgba(0, 255, 0, 0.8);
+  text-shadow: 0 0 3vmin rgba(0, 255, 0, 0.8);
+  line-height: 1;
 }
 
+/* 補足テキスト */
 .async-countdown-text {
-  font-size: clamp(14px, 2.5vw, 18px);
-  margin: clamp(8px, 1.5vh, 15px) 0 0 0;
-  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+  font-size: 3vmin;
+  margin: 1.5vmin 0 0 0;
+  text-shadow: 0.2vmin 0.2vmin 0.4vmin rgba(0, 0, 0, 0.8);
+  line-height: 1.4;
+  word-break: keep-all;
 }
 
+/* 残り回数カウンター */
 .async-rep-counter {
   position: absolute;
-  top: 2vh;
-  right: 2vw;
+  top: 2vmin;
+  right: 2vmin;
   z-index: 10;
-  font-size: clamp(24px, 6vw, 48px);
+  font-size: 7vmin;
   font-weight: bold;
   color: white;
-  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+  text-shadow: 0.3vmin 0.3vmin 0.6vmin rgba(0, 0, 0, 0.8);
   background: rgba(0, 0, 0, 0.5);
-  padding: clamp(5px, 1vh, 10px) clamp(10px, 2vw, 20px);
-  border-radius: clamp(5px, 1vw, 10px);
+  padding: 1.5vmin 3vmin;
+  border-radius: 1.5vmin;
   text-align: center;
 }
 
 .async-rep-label {
-  font-size: clamp(12px, 3vw, 20px);
+  font-size: 3.5vmin;
   font-weight: normal;
-  margin-bottom: clamp(2px, 0.5vh, 5px);
+  margin-bottom: 0.5vmin;
 }
 
+/* 一時停止ボタン */
 .async-pause-button {
   position: absolute;
-  top: 2vh;
-  left: 2vw;
+  top: 2vmin;
+  left: 2vmin;
   z-index: 10;
-  font-size: clamp(20px, 5vw, 36px);
+  font-size: 5vmin;
   background: rgba(0, 0, 0, 0.5);
   color: white;
-  border: 2px solid white;
-  border-radius: clamp(5px, 1vw, 10px);
-  padding: clamp(5px, 1vh, 10px) clamp(10px, 2vw, 20px);
+  border: 0.4vmin solid white;
+  border-radius: 1.5vmin;
+  padding: 1.5vmin 3vmin;
   cursor: pointer;
   transition: all 0.3s ease;
 }
@@ -138,23 +164,25 @@
   transform: scale(1.1);
 }
 
+/* 一時停止中のボタン群 */
 .async-pause-buttons {
   display: flex;
-  gap: clamp(10px, 2vw, 20px);
-  margin-top: clamp(15px, 3vh, 30px);
+  gap: 3vmin;
+  margin-top: 3vmin;
   flex-wrap: wrap;
   justify-content: center;
 }
 
 .async-btn-primary,
 .async-btn-secondary {
-  font-size: clamp(16px, 3vw, 24px);
+  font-size: 3.5vmin;
   font-weight: bold;
-  padding: clamp(10px, 1.5vh, 15px) clamp(20px, 4vw, 40px);
-  border-radius: clamp(5px, 1vw, 10px);
+  padding: 2vmin 5vmin;
+  border-radius: 1.5vmin;
   border: none;
   cursor: pointer;
   transition: all 0.3s ease;
+  white-space: nowrap;
 }
 
 .async-btn-primary {
@@ -177,21 +205,42 @@
   transform: scale(1.05);
 }
 
+/* 筋トレ説明画面 */
 .async-exercise-info {
-  padding: clamp(15px, 3vh, 25px) clamp(20px, 4vw, 40px);
-  max-width: 85%;
+  padding: 4vmin 5vmin;
+  width: 75vmin;
 }
 
 .async-exercise-reps {
-  font-size: clamp(36px, 10vw, 70px);
+  font-size: 18vmin;
   font-weight: bold;
   color: #00ff00;
-  margin: clamp(5px, 1vh, 10px) 0;
-  text-shadow: 0 0 20px rgba(0, 255, 0, 0.8);
+  margin: 2vmin 0;
+  text-shadow: 0 0 3vmin rgba(0, 255, 0, 0.8);
+  line-height: 1;
 }
 
 .async-exercise-tip {
-  font-size: clamp(12px, 2.5vw, 18px);
+  font-size: 3.2vmin;
   color: #ffcc00;
-  margin-top: clamp(10px, 2vh, 20px);
+  margin-top: 2vmin;
+  line-height: 1.4;
+}
+
+/* コンボカウンター */
+.combo-counter {
+  position: absolute;
+  bottom: 3vmin;
+  left: 3vmin;
+  z-index: 10;
+  font-size: 10vmin;
+  font-weight: bold;
+  color: white;
+  text-shadow:
+    0.5vmin 0.5vmin 0 rgba(0, 0, 0, 0.8),
+    -0.2vmin -0.2vmin 0 rgba(0, 0, 0, 0.5),
+    0 0 3vmin rgba(255, 100, 200, 0.8),
+    0 0 6vmin rgba(255, 100, 200, 0.5);
+  font-family: 'Arial Black', 'Helvetica Bold', sans-serif;
+  letter-spacing: 0.3vmin;
 }
